@@ -1,0 +1,36 @@
+{
+    "id": "merchant_generic",
+    "name": "Generic Merchant",
+    "startNode": "greet",
+    "nodes": [
+      {
+        "id": "greet",
+        "type": "DIALOGUE",
+        "speaker": "Merchant",
+        "text": "Welcome! Looking to buy or sell?",
+       "choices": [
+          {"text": "Show me your wares", "targetNode": "shop"},
+          {"text": "I'm just browsing", "targetNode": "browse"},
+          {"text": "Goodbye", "targetNode": "end"}
+        ]
+      },
+      {
+        "id": "shop",
+        "type": "SHOP",
+        "speaker": "Merchant",
+        "text": "Here's what I have in stock!",
+        "nextNode": "end"
+      },
+      {
+        "id": "browse",
+        "type": "DIALOGUE",
+        "speaker": "Merchant",
+        "text": "Take your time! Everything is fairly priced.",
+        "nextNode": "end"
+      },
+      {
+        "id": "end",
+        "type": "END"
+      }
+    ]
+}

@@ -1,0 +1,1555 @@
+// ============================================================================
+// PART 1: DialogueDatabase.java - Central dialogue storage and loading
+// ============================================================================
+package dev.main;
+
+import java.io.*;
+import java.util.*;
+
+/**
+ * Central database for all dialogue trees
+ * Loads dialogues from JSON files and manages them
+ */
+public class DialogueDatabase {
+    
+    private static DialogueDatabase instance;
+    
+    private Map<String, DialogueTree> dialogues;
+    private Map<String, String> npcDialogueMapping;  // NPC ID -> Dialogue ID
+    
+    private DialogueDatabase() {
+        this.dialogues = new HashMap<>();
+        this.npcDialogueMapping = new HashMap<>();
+    }
+    
+    public static DialogueDatabase getInstance() {
+        if (instance == null) {
+            instance = new DialogueDatabase();
+        }
+        return instance;
+    }
+    
+    /**
+     * Load all dialogues from a directory
+     */
+    public void loadAllDialogues(String directoryPath) {
+        // In a real implementation, you'd scan the directory
+        // For now, manually load known dialogue files
+        
+        loadDialogue("/dialogues/fionne_intro.json");
+        loadDialogue("/dialogues/merchant_generic.json");
+        loadDialogue("/dialogues/quest_giver_main.json");
+        
+        System.out.println("Loaded " + dialogues.size() + " dialogue trees");
+    }
+    
+    /**
+     * Load a single dialogue file
+     */
+    public void loadDialogue(String filePath) {
+        DialogueTree tree = DialogueLoader.loadFromFile(filePath);
+        if (tree != null) {
+            registerDialogue(tree);
+        }
+    }
+    
+    /**
+     * Register a dialogue tree
+     */
+    public void registerDialogue(DialogueTree tree) {
+        dialogues.put(tree.getId(), tree);
+        System.out.println("Registered dialogue: " + tree.getName() + " (ID: " + tree.getId() + ")");
+    }
+    
+    /**
+     * Map an NPC to a dialogue tree
+     */
+    public void mapNPCToDialogue(String npcId, String dialogueId) {
+        npcDialogueMapping.put(npcId, dialogueId);
+    }
+    
+    /**
+     * Get dialogue tree by ID
+     */
+    public DialogueTree getDialogue(String dialogueId) {
+        return dialogues.get(dialogueId);
+    }
+    
+    /**
+     * Get dialogue for an NPC
+     */
+    public DialogueTree getDialogueForNPC(String npcId) {
+        String dialogueId = npcDialogueMapping.get(npcId);
+        return dialogueId != null ? dialogues.get(dialogueId) : null;
+    }
+    
+    /**
+     * Create a simple greeting dialogue programmatically
+     */
+    public DialogueTree createSimpleGreeting(String npcId, String npcName, String greeting) {
+        DialogueTree tree = new DialogueTree(npcId + "_greeting", npcName + " Greeting");
+        
+        DialogueNode greetNode = new DialogueNode("greet", DialogueNode.NodeType.DIALOGUE);
+        greetNode.setSpeakerName(npcName);
+        greetNode.setText(greeting);
+        
+        DialogueNode endNode = new DialogueNode("end", DialogueNode.NodeType.END);
+        endNode.setText("Goodbye!");
+        
+        greetNode.setNextNodeId("end");
+        
+        tree.addNode(greetNode);
+        tree.addNode(endNode);
+        tree.setStartNode("greet");
+        
+        registerDialogue(tree);
+        mapNPCToDialogue(npcId, tree.getId());
+        
+        return tree;
+    }
+    
+    /**
+     * Get all dialogue IDs
+     */
+    public Set<String> getAllDialogueIds() {
+        return new HashSet<>(dialogues.keySet());
+    }
+    
+    /**
+     * Clear all dialogues (for reload)
+     */
+    public void clearAll() {
+        dialogues.clear();
+        npcDialogueMapping.clear();
+    }
+}
+
+// ============================================================================
+// PART 2: DialogueConditions.java - Condition system for branching
+// ============================================================================
+package dev.main;
+
+/**
+ * Common dialogue conditions
+ */
+public class DialogueConditions {
+    
+    /**
+     * Check if player has a quest
+     */
+    public static class HasQuestCondition implements DialogueCondition {
+        private String questId;
+        
+        public HasQuestCondition(String questId) {
+            this.questId = questId;
+        }
+        
+        @Override
+        public boolean check(Entity player) {
+            QuestLog questLog = player.getComponent(QuestLog.class);
+            if (questLog == null) return false;
+            return questLog.hasQuest(questId);
+        }
+    }
+    
+    /**
+     * Check if player has completed a quest
+     */
+    public static class QuestCompletedCondition implements DialogueCondition {
+        private String questId;
+        
+        public QuestCompletedCondition(String questId) {
+            this.questId = questId;
+        }
+        
+        @Override
+        public boolean check(Entity player) {
+            QuestLog questLog = player.getComponent(QuestLog.class);
+            if (questLog == null) return false;
+            
+            Quest quest = questLog.getQuest(questId);
+            return quest != null && quest.isCompleted();
+        }
+    }
+    
+    /**
+     * Check if player is at least a certain level
+     */
+    public static class MinLevelCondition implements DialogueCondition {
+        private int minLevel;
+        
+        public MinLevelCondition(int minLevel) {
+            this.minLevel = minLevel;
+        }
+        
+        @Override
+        public boolean check(Entity player) {
+            Experience exp = player.getComponent(Experience.class);
+            if (exp == null) return false;
+            return exp.level >= minLevel;
+        }
+    }
+    
+    /**
+     * Check if player has killed enough of a monster type
+     */
+    public static class KillCountCondition implements DialogueCondition {
+        private String objectiveId;
+        private int requiredCount;
+        
+        public KillCountCondition(String objectiveId, int requiredCount) {
+            this.objectiveId = objectiveId;
+            this.requiredCount = requiredCount;
+        }
+        
+        @Override
+        public boolean check(Entity player) {
+            QuestLog questLog = player.getComponent(QuestLog.class);
+            if (questLog == null) return false;
+            
+            for (Quest quest : questLog.getActiveQuests()) {
+                for (QuestObjective obj : quest.getObjectives()) {
+                    if (obj.getId().equals(objectiveId)) {
+                        return obj.getCurrentProgress() >= requiredCount;
+                    }
+                }
+            }
+            return false;
+        }
+    }
+    
+    /**
+     * Inverse condition - true when inner condition is false
+     */
+    public static class NotCondition implements DialogueCondition {
+        private DialogueCondition condition;
+        
+        public NotCondition(DialogueCondition condition) {
+            this.condition = condition;
+        }
+        
+        @Override
+        public boolean check(Entity player) {
+            return !condition.check(player);
+        }
+    }
+    
+    /**
+     * AND condition - true when all conditions are true
+     */
+    public static class AndCondition implements DialogueCondition {
+        private List<DialogueCondition> conditions;
+        
+        public AndCondition(DialogueCondition... conditions) {
+            this.conditions = Arrays.asList(conditions);
+        }
+        
+        @Override
+        public boolean check(Entity player) {
+            for (DialogueCondition condition : conditions) {
+                if (!condition.check(player)) return false;
+            }
+            return true;
+        }
+    }
+    
+    /**
+     * OR condition - true when any condition is true
+     */
+    public static class OrCondition implements DialogueCondition {
+        private List<DialogueCondition> conditions;
+        
+        public OrCondition(DialogueCondition... conditions) {
+            this.conditions = Arrays.asList(conditions);
+        }
+        
+        @Override
+        public boolean check(Entity player) {
+            for (DialogueCondition condition : conditions) {
+                if (condition.check(player)) return true;
+            }
+            return false;
+        }
+    }
+}
+
+// ============================================================================
+// PART 3: DialogueActions.java - Actions that execute during dialogue
+// ============================================================================
+package dev.main;
+
+/**
+ * Common dialogue actions
+ */
+public class DialogueActions {
+    
+    /**
+     * Award XP to player
+     */
+    public static class AwardXPAction implements DialogueAction {
+        private int xpAmount;
+        
+        public AwardXPAction(int xpAmount) {
+            this.xpAmount = xpAmount;
+        }
+        
+        @Override
+        public void execute(Entity player) {
+            Experience exp = player.getComponent(Experience.class);
+            if (exp != null) {
+                exp.addExperience(xpAmount);
+                System.out.println("Awarded " + xpAmount + " XP from dialogue");
+            }
+        }
+    }
+    
+    /**
+     * Give quest to player
+     */
+    public static class GiveQuestAction implements DialogueAction {
+        private Quest quest;
+        
+        public GiveQuestAction(Quest quest) {
+            this.quest = quest;
+        }
+        
+        @Override
+        public void execute(Entity player) {
+            QuestLog questLog = player.getComponent(QuestLog.class);
+            if (questLog != null) {
+                quest.accept();
+                questLog.addQuest(quest);
+                System.out.println("Quest accepted via dialogue: " + quest.getName());
+            }
+        }
+    }
+    
+    /**
+     * Complete a quest objective
+     */
+    public static class CompleteObjectiveAction implements DialogueAction {
+        private String objectiveId;
+        private int amount;
+        
+        public CompleteObjectiveAction(String objectiveId, int amount) {
+            this.objectiveId = objectiveId;
+            this.amount = amount;
+        }
+        
+        @Override
+        public void execute(Entity player) {
+            QuestLog questLog = player.getComponent(QuestLog.class);
+            if (questLog != null) {
+                questLog.updateQuestProgress(objectiveId, amount);
+                System.out.println("Quest progress updated: " + objectiveId + " +" + amount);
+            }
+        }
+    }
+    
+    /**
+     * Heal player
+     */
+    public static class HealPlayerAction implements DialogueAction {
+        private int healAmount;
+        
+        public HealPlayerAction(int healAmount) {
+            this.healAmount = healAmount;
+        }
+        
+        @Override
+        public void execute(Entity player) {
+            Stats stats = player.getComponent(Stats.class);
+            if (stats != null) {
+                stats.hp = Math.min(stats.maxHp, stats.hp + healAmount);
+                System.out.println("Healed " + healAmount + " HP from dialogue");
+            }
+        }
+    }
+    
+    /**
+     * Print debug message
+     */
+    public static class DebugMessageAction implements DialogueAction {
+        private String message;
+        
+        public DebugMessageAction(String message) {
+            this.message = message;
+        }
+        
+        @Override
+        public void execute(Entity player) {
+            System.out.println("[Dialogue Action] " + message);
+        }
+    }
+    
+    /**
+     * Chain multiple actions
+     */
+    public static class MultiAction implements DialogueAction {
+        private List<DialogueAction> actions;
+        
+        public MultiAction(DialogueAction... actions) {
+            this.actions = Arrays.asList(actions);
+        }
+        
+        @Override
+        public void execute(Entity player) {
+            for (DialogueAction action : actions) {
+                action.execute(player);
+            }
+        }
+    }
+}
+
+// ============================================================================
+// PART 4: DialogueBuilder.java - Fluent API for creating dialogues
+// ============================================================================
+package dev.main;
+
+/**
+ * Builder pattern for creating dialogue trees programmatically
+ */
+public class DialogueBuilder {
+    
+    private DialogueTree tree;
+    private DialogueNode currentNode;
+    
+    public DialogueBuilder(String dialogueId, String dialogueName) {
+        this.tree = new DialogueTree(dialogueId, dialogueName);
+    }
+    
+    /**
+     * Start building a new node
+     */
+    public DialogueBuilder node(String nodeId, DialogueNode.NodeType type) {
+        currentNode = new DialogueNode(nodeId, type);
+        tree.addNode(currentNode);
+        return this;
+    }
+    
+    /**
+     * Set speaker name
+     */
+    public DialogueBuilder speaker(String speakerName) {
+        if (currentNode != null) {
+            currentNode.setSpeakerName(speakerName);
+        }
+        return this;
+    }
+    
+    /**
+     * Set dialogue text
+     */
+    public DialogueBuilder text(String text) {
+        if (currentNode != null) {
+            currentNode.setText(text);
+        }
+        return this;
+    }
+    
+    /**
+     * Set next node
+     */
+    public DialogueBuilder next(String nextNodeId) {
+        if (currentNode != null) {
+            currentNode.setNextNodeId(nextNodeId);
+        }
+        return this;
+    }
+    
+    /**
+     * Add a choice
+     */
+    public DialogueBuilder choice(String choiceText, String targetNodeId) {
+        if (currentNode != null) {
+            currentNode.addChoice(choiceText, targetNodeId);
+        }
+        return this;
+    }
+    
+    /**
+     * Add a conditional choice
+     */
+    public DialogueBuilder choiceIf(String choiceText, String targetNodeId, DialogueCondition condition) {
+        if (currentNode != null) {
+            currentNode.addChoice(choiceText, targetNodeId, condition);
+        }
+        return this;
+    }
+    
+    /**
+     * Set node condition
+     */
+    public DialogueBuilder condition(DialogueCondition condition) {
+        if (currentNode != null) {
+            currentNode.setCondition(condition);
+        }
+        return this;
+    }
+    
+    /**
+     * Add an action
+     */
+    public DialogueBuilder action(DialogueAction action) {
+        if (currentNode != null) {
+            currentNode.addAction(action);
+        }
+        return this;
+    }
+    
+    /**
+     * Set quest reference
+     */
+    public DialogueBuilder quest(String questId) {
+        if (currentNode != null) {
+            currentNode.setQuestId(questId);
+        }
+        return this;
+    }
+    
+    /**
+     * Set start node
+     */
+    public DialogueBuilder start(String nodeId) {
+        tree.setStartNode(nodeId);
+        return this;
+    }
+    
+    /**
+     * Build and return the dialogue tree
+     */
+    public DialogueTree build() {
+        return tree;
+    }
+    
+    /**
+     * Build and register in database
+     */
+    public DialogueTree buildAndRegister() {
+        DialogueDatabase.getInstance().registerDialogue(tree);
+        return tree;
+    }
+}
+
+// ============================================================================
+// PART 5: DialogueTemplates.java - Common dialogue patterns
+// ============================================================================
+package dev.main;
+
+/**
+ * Pre-built dialogue templates for common scenarios
+ */
+public class DialogueTemplates {
+    
+    /**
+     * Simple greeting with goodbye
+     */
+    public static DialogueTree createGreeting(String npcId, String npcName, String greetingText) {
+        return new DialogueBuilder(npcId + "_greeting", npcName + " Greeting")
+            .node("greet", DialogueNode.NodeType.DIALOGUE)
+                .speaker(npcName)
+                .text(greetingText)
+                .next("end")
+            .node("end", DialogueNode.NodeType.END)
+                .text("Farewell, traveler.")
+            .start("greet")
+            .build();
+    }
+    
+    /**
+     * Quest offer dialogue
+     */
+    public static DialogueTree createQuestOffer(String npcId, String npcName, 
+                                                String questId, Quest quest) {
+        return new DialogueBuilder(npcId + "_quest_" + questId, npcName + " Quest")
+            .node("offer", DialogueNode.NodeType.QUEST_OFFER)
+                .speaker(npcName)
+                .text(quest.getDescription())
+                .quest(questId)
+                .choice("I'll help you!", "accept")
+                .choice("Not right now.", "decline")
+            .node("accept", DialogueNode.NodeType.DIALOGUE)
+                .speaker(npcName)
+                .text(quest.getAcceptDialogue())
+                .action(new DialogueActions.GiveQuestAction(quest))
+                .next("end")
+            .node("decline", DialogueNode.NodeType.DIALOGUE)
+                .speaker(npcName)
+                .text("I understand. Come back if you change your mind.")
+                .next("end")
+            .node("end", DialogueNode.NodeType.END)
+            .start("offer")
+            .build();
+    }
+    
+    /**
+     * Quest completion dialogue
+     */
+    public static DialogueTree createQuestComplete(String npcId, String npcName, 
+                                                   String questId, Quest quest) {
+        return new DialogueBuilder(npcId + "_complete_" + questId, "Quest Complete")
+            .node("complete", DialogueNode.NodeType.DIALOGUE)
+                .speaker(npcName)
+                .text(quest.getCompleteDialogue())
+                .action(new DialogueActions.AwardXPAction(quest.getExpReward()))
+                .next("end")
+            .node("end", DialogueNode.NodeType.END)
+            .start("complete")
+            .build();
+    }
+    
+    /**
+     * Merchant dialogue
+     */
+    public static DialogueTree createMerchant(String npcId, String npcName) {
+        return new DialogueBuilder(npcId + "_merchant", npcName + " Shop")
+            .node("greet", DialogueNode.NodeType.DIALOGUE)
+                .speaker(npcName)
+                .text("Welcome to my shop! What can I do for you?")
+                .choice("Show me your wares", "shop")
+                .choice("Just looking", "end")
+            .node("shop", DialogueNode.NodeType.SHOP)
+                .speaker(npcName)
+                .text("Here's what I have in stock:")
+                .next("end")
+            .node("end", DialogueNode.NodeType.END)
+                .text("Come back anytime!")
+            .start("greet")
+            .build();
+    }
+    
+    /**
+     * Branching conversation based on quest progress
+     */
+    public static DialogueTree createQuestProgressBranching(String npcId, String npcName,
+                                                           String questId, Quest quest) {
+        DialogueCondition hasQuest = new DialogueConditions.HasQuestCondition(questId);
+        DialogueCondition questComplete = new DialogueConditions.QuestCompletedCondition(questId);
+        
+        return new DialogueBuilder(npcId + "_progress_" + questId, "Quest Progress")
+            .node("check", DialogueNode.NodeType.DIALOGUE)
+                .speaker(npcName)
+                .text("Hello again!")
+                .choiceIf("About that quest...", "has_quest", hasQuest)
+                .choiceIf("I've completed the quest!", "completed", questComplete)
+                .choice("Goodbye", "end")
+            .node("has_quest", DialogueNode.NodeType.DIALOGUE)
+                .speaker(npcName)
+                .text(quest.getProgressDialogue())
+                .next("end")
+            .node("completed", DialogueNode.NodeType.DIALOGUE)
+                .speaker(npcName)
+                .text(quest.getCompleteDialogue())
+                .action(new DialogueActions.AwardXPAction(quest.getExpReward()))
+                .next("end")
+            .node("end", DialogueNode.NodeType.END)
+            .start("check")
+            .build();
+    }
+}
+
+// ============================================================================
+// PART 6: Example JSON Files (save these in /resources/dialogues/)
+// ============================================================================
+
+/*
+ * FILE: /resources/dialogues/fionne_intro.json
+ * 
+ * {
+ *   "id": "fionne_intro",
+ *   "name": "Fionne Introduction",
+ *   "startNode": "greet",
+ *   "nodes": [
+ *     {
+ *       "id": "greet",
+ *       "type": "DIALOGUE",
+ *       "speaker": "Fionne",
+ *       "text": "Greetings, brave adventurer! I have a task that needs doing.",
+ *       "choices": [
+ *         {"text": "What do you need?", "targetNode": "quest_offer"},
+ *         {"text": "Not interested.", "targetNode": "decline"}
+ *       ]
+ *     },
+ *     {
+ *       "id": "quest_offer",
+ *       "type": "QUEST_OFFER",
+ *       "speaker": "Fionne",
+ *       "text": "The goblins have been causing trouble. Could you help us by defeating 5 of them?",
+ *       "questId": "goblin_slayer",
+ *       "choices": [
+ *         {"text": "I'll do it!", "targetNode": "accept"},
+ *         {"text": "Maybe later.", "targetNode": "decline"}
+ *       ]
+ *     },
+ *     {
+ *       "id": "accept",
+ *       "type": "DIALOGUE",
+ *       "speaker": "Fionne",
+ *       "text": "Excellent! The goblins won't know what hit them.",
+ *       "actions": [
+ *         {"type": "debug_message", "message": "Quest accepted: Goblin Slayer"}
+ *       ],
+ *       "nextNode": "end"
+ *     },
+ *     {
+ *       "id": "decline",
+ *       "type": "DIALOGUE",
+ *       "speaker": "Fionne",
+ *       "text": "I understand. Come back if you change your mind.",
+ *       "nextNode": "end"
+ *     },
+ *     {
+ *       "id": "end",
+ *       "type": "END"
+ *     }
+ *   ]
+ * }
+ */
+
+/*
+ * FILE: /resources/dialogues/merchant_generic.json
+ * 
+ * {
+ *   "id": "merchant_generic",
+ *   "name": "Generic Merchant",
+ *   "startNode": "greet",
+ *   "nodes": [
+ *     {
+ *       "id": "greet",
+ *       "type": "DIALOGUE",
+ *       "speaker": "Merchant",
+ *       "text": "Welcome! Looking to buy or sell?",
+ *       "choices": [
+ *         {"text": "Show me your wares", "targetNode": "shop"},
+ *         {"text": "I'm just browsing", "targetNode": "browse"},
+ *         {"text": "Goodbye", "targetNode": "end"}
+ *       ]
+ *     },
+ *     {
+ *       "id": "shop",
+ *       "type": "SHOP",
+ *       "speaker": "Merchant",
+ *       "text": "Here's what I have in stock!",
+ *       "nextNode": "end"
+ *     },
+ *     {
+ *       "id": "browse",
+ *       "type": "DIALOGUE",
+ *       "speaker": "Merchant",
+ *       "text": "Take your time! Everything is fairly priced.",
+ *       "nextNode": "end"
+ *     },
+ *     {
+ *       "id": "end",
+ *       "type": "END"
+ *     }
+ *   ]
+ * }
+ */
+
+/*
+ * FILE: /resources/dialogues/healer_npc.json
+ * 
+ * {
+ *   "id": "healer_npc",
+ *   "name": "Village Healer",
+ *   "startNode": "check_health",
+ *   "nodes": [
+ *     {
+ *       "id": "check_health",
+ *       "type": "DIALOGUE",
+ *       "speaker": "Healer",
+ *       "text": "You look wounded. Would you like me to heal you?",
+ *       "choices": [
+ *         {"text": "Yes, please!", "targetNode": "heal"},
+ *         {"text": "I'm fine, thanks.", "targetNode": "decline"}
+ *       ]
+ *     },
+ *     {
+ *       "id": "heal",
+ *       "type": "DIALOGUE",
+ *       "speaker": "Healer",
+ *       "text": "There you go! You should feel much better now.",
+ *       "actions": [
+ *         {"type": "heal_player", "amount": 100}
+ *       ],
+ *       "nextNode": "end"
+ *     },
+ *     {
+ *       "id": "decline",
+ *       "type": "DIALOGUE",
+ *       "speaker": "Healer",
+ *       "text": "Alright, but don't push yourself too hard!",
+ *       "nextNode": "end"
+ *     },
+ *     {
+ *       "id": "end",
+ *       "type": "END"
+ *     }
+ *   ]
+ * }
+ */
+
+// ============================================================================
+// PART 7: Integration with Existing Systems
+// ============================================================================
+
+/*
+ * UPDATE GameState.java - Initialize dialogue system in constructor:
+ * 
+ * public GameState() {
+ *     // ... existing code ...
+ *     
+ *     // Initialize dialogue system
+ *     initializeDialogueSystem();
+ * }
+ * 
+ * private void initializeDialogueSystem() {
+ *     DialogueDatabase db = DialogueDatabase.getInstance();
+ *     
+ *     // Load all dialogue files
+ *     db.loadAllDialogues("/dialogues/");
+ *     
+ *     // Map NPCs to their dialogues
+ *     db.mapNPCToDialogue("fionne", "fionne_intro");
+ *     
+ *     System.out.println("Dialogue system initialized");
+ * }
+ */
+
+/*
+ * UPDATE Engine.java - handleNPCClick method:
+ * 
+ * private void handleNPCClick(Entity npc) {
+ *     NPC npcComponent = npc.getComponent(NPC.class);
+ *     if (npcComponent == null) return;
+ *     
+ *     Entity player = gameState.getPlayer();
+ *     
+ *     // Check range
+ *     if (!npcComponent.isPlayerInRange(player, npc)) {
+ *         System.out.println("Too far away to talk to " + npcComponent.getNpcName());
+ *         return;
+ *     }
+ *     
+ *     // Get dialogue from database
+ *     DialogueDatabase db = DialogueDatabase.getInstance();
+ *     DialogueTree dialogue = db.getDialogueForNPC(npcComponent.getNpcId());
+ *     
+ *     if (dialogue != null) {
+ *         // Start dialogue using enhanced dialogue box
+ *         UIDialogueBoxEnhanced dialogueBox = gameState.getUIManager().getEnhancedDialogueBox();
+ *         dialogueBox.startDialogue(dialogue.getId(), npc, player);
+ *     } else {
+ *         // Fallback to simple greeting
+ *         gameState.getUIManager().showDialogue(
+ *             npcComponent.getNpcName(),
+ *             npcComponent.getGreetingDialogue()
+ *         );
+ *     }
+ * }
+ */
+
+/*
+ * UPDATE UIManager.java - Add enhanced dialogue box:
+ * 
+ * private UIDialogueBoxEnhanced enhancedDialogueBox;
+ * 
+ * private void initializeUI() {
+ *     createSkillBar();
+ *     createVerticalMenu();
+ *     createDialogueBox();
+ *     createEnhancedDialogueBox();  // NEW
+ * }
+ * 
+ * private void createEnhancedDialogueBox() {
+ *     int width = 600;
+ *     int height = 450;
+ *     int x = (Engine.WIDTH - width) / 2;
+ *     int y = (Engine.HEIGHT - height) / 2;
+ *     
+ *     enhancedDialogueBox = new UIDialogueBoxEnhanced(x, y, width, height);
+ *     enhancedDialogueBox.setVisible(false);
+ *     enhancedDialogueBox.setPlayer(gameState.getPlayer());
+ *     
+ *     enhancedDialogueBox.setOnClose(() -> {
+ *         System.out.println("Dialogue closed");
+ *     });
+ * }
+ * 
+ * public UIDialogueBoxEnhanced getEnhancedDialogueBox() {
+ *     return enhancedDialogueBox;
+ * }
+ * 
+ * // In render():
+ * public void render(Graphics2D g) {
+ *     // ... existing panels ...
+ *     
+ *     if (questPanel != null && questPanel.isVisible()) {
+ *         questPanel.render(g);
+ *     }
+ *     
+ *     if (dialogueBox != null && dialogueBox.isVisible()) {
+ *         dialogueBox.render(g);
+ *     }
+ *     
+ *     // NEW: Render enhanced dialogue box
+ *     if (enhancedDialogueBox != null && enhancedDialogueBox.isVisible()) {
+ *         enhancedDialogueBox.render(g);
+ *     }
+ * }
+ * 
+ * // In handleClick():
+ * public boolean handleClick(int mouseX, int mouseY) {
+ *     // NEW: Check enhanced dialogue box first
+ *     if (enhancedDialogueBox != null && enhancedDialogueBox.isVisible()) {
+ *         if (enhancedDialogueBox.handleClick(mouseX, mouseY)) {
+ *             return true;
+ *         }
+ *     }
+ *     
+ *     // ... rest of existing code ...
+ * }
+ */
+
+// ============================================================================
+// PART 9: DialogueExamples.java - Example usage patterns
+// ============================================================================
+package dev.main;
+
+/**
+ * Examples showing how to create dialogues using the system
+ */
+public class DialogueExamples {
+    
+    /**
+     * Example 1: Create a simple greeting programmatically
+     */
+    public static void createSimpleGreeting() {
+        DialogueTree greeting = new DialogueBuilder("guard_greeting", "Guard Greeting")
+            .node("greet", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Guard")
+                .text("Halt! State your business.")
+                .choice("I'm just passing through", "pass")
+                .choice("I'm here to help", "help")
+            .node("pass", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Guard")
+                .text("Very well. Be on your way.")
+                .next("end")
+            .node("help", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Guard")
+                .text("We could use someone brave. Speak to the captain.")
+                .next("end")
+            .node("end", DialogueNode.NodeType.END)
+            .start("greet")
+            .buildAndRegister();
+    }
+    
+    /**
+     * Example 2: Quest offer with conditions
+     */
+    public static void createConditionalQuestOffer(Quest quest) {
+        // Only offer quest if player is level 5+
+        DialogueCondition levelCheck = new DialogueConditions.MinLevelCondition(5);
+        
+        DialogueTree questDialogue = new DialogueBuilder("elder_quest", "Elder Quest Offer")
+            .node("greet", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Village Elder")
+                .text("Greetings, adventurer.")
+                .choiceIf("Do you need help?", "offer", levelCheck)
+                .choiceIf("You seem too inexperienced...", "too_weak", 
+                    new DialogueConditions.NotCondition(levelCheck))
+                .choice("Farewell", "end")
+            .node("offer", DialogueNode.NodeType.QUEST_OFFER)
+                .speaker("Village Elder")
+                .text("Yes! " + quest.getDescription())
+                .quest(quest.getId())
+                .choice("I accept", "accept")
+                .choice("Not now", "end")
+            .node("accept", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Village Elder")
+                .text(quest.getAcceptDialogue())
+                .action(new DialogueActions.GiveQuestAction(quest))
+                .next("end")
+            .node("too_weak", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Village Elder")
+                .text("Come back when you're stronger, young one.")
+                .next("end")
+            .node("end", DialogueNode.NodeType.END)
+            .start("greet")
+            .buildAndRegister();
+    }
+    
+    /**
+     * Example 3: Multi-path branching dialogue
+     */
+    public static void createBranchingDialogue() {
+        DialogueTree branching = new DialogueBuilder("mysterious_stranger", "Mysterious Stranger")
+            .node("greet", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Mysterious Stranger")
+                .text("I sense great potential in you...")
+                .choice("Who are you?", "ask_identity")
+                .choice("What do you want?", "ask_purpose")
+                .choice("I must go", "end")
+            .node("ask_identity", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Mysterious Stranger")
+                .text("My name is not important. What matters is your destiny.")
+                .choice("Tell me more", "ask_destiny")
+                .choice("This is nonsense", "dismiss")
+            .node("ask_purpose", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Mysterious Stranger")
+                .text("I want to help you unlock your true power.")
+                .choice("How?", "ask_how")
+                .choice("I don't trust you", "distrust")
+            .node("ask_destiny", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Mysterious Stranger")
+                .text("You are destined for greatness. But first, you must prove yourself.")
+                .action(new DialogueActions.AwardXPAction(50))
+                .next("end")
+            .node("ask_how", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Mysterious Stranger")
+                .text("Seek the ancient ruins to the north. There you will find what you seek.")
+                .next("end")
+            .node("dismiss", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Mysterious Stranger")
+                .text("You will understand in time...")
+                .next("end")
+            .node("distrust", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Mysterious Stranger")
+                .text("Wise, but unnecessary. I mean you no harm.")
+                .next("end")
+            .node("end", DialogueNode.NodeType.END)
+            .start("greet")
+            .buildAndRegister();
+    }
+    
+    /**
+     * Example 4: Quest progress tracking dialogue
+     */
+    public static void createProgressTrackingDialogue(Quest quest) {
+        DialogueCondition hasQuest = new DialogueConditions.HasQuestCondition(quest.getId());
+        DialogueCondition questComplete = new DialogueConditions.QuestCompletedCondition(quest.getId());
+        DialogueCondition notHasQuest = new DialogueConditions.NotCondition(hasQuest);
+        
+        DialogueTree tracking = new DialogueBuilder("quest_tracker", "Quest Progress Tracker")
+            .node("check", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Quest Giver")
+                .text("Hello again!")
+                .choiceIf("I have the quest active", "progress", hasQuest)
+                .choiceIf("I completed it!", "complete", questComplete)
+                .choiceIf("About that quest...", "offer", notHasQuest)
+                .choice("Goodbye", "end")
+            .node("progress", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Quest Giver")
+                .text(quest.getProgressDialogue())
+                .next("end")
+            .node("complete", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Quest Giver")
+                .text(quest.getCompleteDialogue())
+                .action(new DialogueActions.AwardXPAction(quest.getExpReward()))
+                .next("end")
+            .node("offer", DialogueNode.NodeType.QUEST_OFFER)
+                .speaker("Quest Giver")
+                .text(quest.getDescription())
+                .quest(quest.getId())
+                .choice("Accept", "accept")
+                .choice("Decline", "end")
+            .node("accept", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Quest Giver")
+                .text(quest.getAcceptDialogue())
+                .action(new DialogueActions.GiveQuestAction(quest))
+                .next("end")
+            .node("end", DialogueNode.NodeType.END)
+            .start("check")
+            .buildAndRegister();
+    }
+    
+    /**
+     * Example 5: Create all NPC dialogues for a village
+     */
+    public static void initializeVillageDialogues() {
+        DialogueDatabase db = DialogueDatabase.getInstance();
+        
+        // Blacksmith
+        DialogueTree blacksmith = DialogueTemplates.createMerchant("blacksmith", "Blacksmith");
+        db.mapNPCToDialogue("village_blacksmith", blacksmith.getId());
+        
+        // Innkeeper
+        DialogueTree innkeeper = new DialogueBuilder("innkeeper_chat", "Innkeeper")
+            .node("greet", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Innkeeper")
+                .text("Welcome to my inn! Can I get you something?")
+                .choice("Tell me about this town", "info")
+                .choice("I'd like to rest", "rest")
+                .choice("Nothing, thanks", "end")
+            .node("info", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Innkeeper")
+                .text("This is a peaceful village, though lately goblins have been troubling us.")
+                .next("end")
+            .node("rest", DialogueNode.NodeType.DIALOGUE)
+                .speaker("Innkeeper")
+                .text("Rest well, adventurer!")
+                .action(new DialogueActions.HealPlayerAction(9999))
+                .next("end")
+            .node("end", DialogueNode.NodeType.END)
+            .start("greet")
+            .buildAndRegister();
+        db.mapNPCToDialogue("village_innkeeper", innkeeper.getId());
+        
+        System.out.println("Village dialogues initialized");
+    }
+}
+
+// ============================================================================
+// PART 10: Usage Guide and Integration Steps
+// ============================================================================
+
+/*
+ * INTEGRATION STEPS:
+ * 
+ * 1. CREATE DIALOGUE FILES
+ *    - Create /resources/dialogues/ directory
+ *    - Add JSON files (see examples above)
+ * 
+ * 2. UPDATE GameState CONSTRUCTOR
+ *    Add after entities initialization:
+ *    
+ *    private void initializeDialogueSystem() {
+ *        DialogueDatabase db = DialogueDatabase.getInstance();
+ *        
+ *        // Load dialogues from JSON files
+ *        db.loadDialogue("/dialogues/fionne_intro.json");
+ *        db.loadDialogue("/dialogues/merchant_generic.json");
+ *        db.loadDialogue("/dialogues/healer_npc.json");
+ *        
+ *        // Create programmatic dialogues
+ *        DialogueExamples.createSimpleGreeting();
+ *        DialogueExamples.initializeVillageDialogues();
+ *        
+ *        // Map NPCs to dialogues
+ *        db.mapNPCToDialogue("fionne", "fionne_intro");
+ *        
+ *        System.out.println("Dialogue system ready!");
+ *    }
+ * 
+ * 3. UPDATE Engine.handleNPCClick()
+ *    Replace existing NPC click handling with:
+ *    
+ *    private void handleNPCClick(Entity npc) {
+ *        NPC npcComponent = npc.getComponent(NPC.class);
+ *        if (npcComponent == null) return;
+ *        
+ *        Entity player = gameState.getPlayer();
+ *        
+ *        if (!npcComponent.isPlayerInRange(player, npc)) {
+ *            System.out.println("Too far to talk");
+ *            return;
+ *        }
+ *        
+ *        // Try to get dialogue from database
+ *        DialogueDatabase db = DialogueDatabase.getInstance();
+ *        DialogueTree dialogue = db.getDialogueForNPC(npcComponent.getNpcId());
+ *        
+ *        if (dialogue != null) {
+ *            // Use enhanced dialogue system
+ *            UIDialogueBoxEnhanced box = gameState.getUIManager().getEnhancedDialogueBox();
+ *            if (box != null) {
+ *                box.startDialogue(dialogue.getId(), npc, player);
+ *            }
+ *        } else {
+ *            // Fallback to old system
+ *            Quest completedQuest = npcComponent.getCompletedQuest();
+ *            if (completedQuest != null) {
+ *                gameState.getUIManager().showQuestComplete(
+ *                    npcComponent.getNpcName(), completedQuest);
+ *            } else {
+ *                gameState.getUIManager().showDialogue(
+ *                    npcComponent.getNpcName(),
+ *                    npcComponent.getGreetingDialogue());
+ *            }
+ *        }
+ *    }
+ * 
+ * 4. UPDATE UIManager
+ *    Add enhanced dialogue box field and methods (see Part 8 above)
+ * 
+ * 5. TESTING
+ *    Create a test NPC:
+ *    
+ *    Entity testNPC = EntityFactory.createNPC("test_npc", "Test NPC", 5 * 64, 5 * 64);
+ *    entities.add(testNPC);
+ *    
+ *    // Create and map dialogue
+ *    DialogueTree testDialogue = new DialogueBuilder("test_dialogue", "Test")
+ *        .node("greet", DialogueNode.NodeType.DIALOGUE)
+ *            .speaker("Test NPC")
+ *            .text("Hello! I am a test NPC.")
+ *            .choice("Cool!", "end")
+ *        .node("end", DialogueNode.NodeType.END)
+ *        .start("greet")
+ *        .build();
+ *    
+ *    DialogueDatabase.getInstance().registerDialogue(testDialogue);
+ *    DialogueDatabase.getInstance().mapNPCToDialogue("test_npc", "test_dialogue");
+ */
+
+/*
+ * CREATING DIALOGUES - BEST PRACTICES:
+ * 
+ * 1. Use JSON for content-heavy dialogues (story, quests)
+ * 2. Use DialogueBuilder for simple, dynamic dialogues
+ * 3. Use DialogueTemplates for common patterns
+ * 4. Always register dialogues in DialogueDatabase
+ * 5. Map NPCs to dialogues using NPC ID
+ * 6. Use conditions for branching based on player state
+ * 7. Use actions for game effects (XP, healing, quests)
+ * 8. Keep dialogue nodes focused (one topic per node)
+ * 9. Always provide an END node
+ * 10. Test dialogue flow thoroughly
+ */
+
+/*
+ * DIALOGUE FLOW EXAMPLE:
+ * 
+ * Player clicks NPC
+ *   ↓
+ * Engine.handleNPCClick()
+ *   ↓
+ * DialogueDatabase.getDialogueForNPC(npcId)
+ *   ↓
+ * UIDialogueBoxEnhanced.startDialogue(dialogueId, npc, player)
+ *   ↓
+ * DialogueManager.startDialogue() → returns first DialogueNode
+ *   ↓
+ * UI displays node text and choices
+ *   ↓
+ * Player clicks choice
+ *   ↓
+ * DialogueManager.choose(index) → returns next node
+ *   ↓
+ * Node actions execute (give quest, award XP, etc.)
+ *   ↓
+ * Repeat until END node
+ *   ↓
+ * Dialogue closes
+ */
+package dev.main;
+
+import java.io.*;
+import java.util.*;
+
+/**
+ * Enhanced JSON loader with support for conditions and actions
+ * 
+ * JSON Format:
+ * {
+ *   "id": "fionne_intro",
+ *   "name": "Fionne Introduction",
+ *   "startNode": "greet",
+ *   "nodes": [
+ *     {
+ *       "id": "greet",
+ *       "type": "DIALOGUE",
+ *       "speaker": "Fionne",
+ *       "text": "Hello traveler!",
+ *       "nextNode": "end",
+ *       "choices": [
+ *         {"text": "Hello", "targetNode": "friendly"},
+ *         {"text": "Goodbye", "targetNode": "end"}
+ *       ],
+ *       "conditions": [
+ *         {"type": "min_level", "value": 5}
+ *       ],
+ *       "actions": [
+ *         {"type": "award_xp", "amount": 100}
+ *       ]
+ *     }
+ *   ]
+ * }
+ */
+public class EnhancedDialogueLoader {
+    
+    /**
+     * Load dialogue with enhanced features
+     */
+    public static DialogueTree loadFromFile(String filePath) {
+        try {
+            InputStream is = EnhancedDialogueLoader.class.getResourceAsStream(filePath);
+            if (is == null) {
+                System.err.println("Dialogue file not found: " + filePath);
+                return null;
+            }
+            
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+            StringBuilder json = new StringBuilder();
+            String line;
+            
+            while ((line = reader.readLine()) != null) {
+                json.append(line.trim());
+            }
+            
+            reader.close();
+            
+            return parseDialogueTree(json.toString());
+            
+        } catch (Exception e) {
+            System.err.println("Failed to load dialogue: " + filePath);
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    private static DialogueTree parseDialogueTree(String json) {
+        // Remove outer braces
+        json = json.substring(json.indexOf('{') + 1, json.lastIndexOf('}'));
+        
+        String id = extractStringValue(json, "id");
+        String name = extractStringValue(json, "name");
+        String startNode = extractStringValue(json, "startNode");
+        
+        DialogueTree tree = new DialogueTree(id, name);
+        
+        // Extract and parse nodes
+        String nodesJson = extractArrayValue(json, "nodes");
+        List<String> nodeObjects = splitJsonArray(nodesJson);
+        
+        for (String nodeJson : nodeObjects) {
+            DialogueNode node = parseDialogueNode(nodeJson);
+            if (node != null) {
+                tree.addNode(node);
+            }
+        }
+        
+        if (startNode != null && !startNode.isEmpty()) {
+            tree.setStartNode(startNode);
+        }
+        
+        return tree;
+    }
+    
+    private static DialogueNode parseDialogueNode(String json) {
+        String nodeId = extractStringValue(json, "id");
+        String typeStr = extractStringValue(json, "type");
+        
+        DialogueNode.NodeType type;
+        try {
+            type = DialogueNode.NodeType.valueOf(typeStr.toUpperCase());
+        } catch (Exception e) {
+            type = DialogueNode.NodeType.DIALOGUE;
+        }
+        
+        DialogueNode node = new DialogueNode(nodeId, type);
+        
+        // Basic properties
+        String speaker = extractStringValue(json, "speaker");
+        if (speaker != null) node.setSpeakerName(speaker);
+        
+        String text = extractStringValue(json, "text");
+        if (text != null) node.setText(text);
+        
+        String nextNode = extractStringValue(json, "nextNode");
+        if (nextNode != null) node.setNextNodeId(nextNode);
+        
+        String questId = extractStringValue(json, "questId");
+        if (questId != null) node.setQuestId(questId);
+        
+        // Parse choices
+        parseChoices(json, node);
+        
+        // Parse conditions
+        parseConditions(json, node);
+        
+        // Parse actions
+        parseActions(json, node);
+        
+        return node;
+    }
+    
+    private static void parseChoices(String json, DialogueNode node) {
+        String choicesJson = extractArrayValue(json, "choices");
+        if (choicesJson == null || choicesJson.isEmpty()) return;
+        
+        List<String> choiceObjects = splitJsonArray(choicesJson);
+        for (String choiceJson : choiceObjects) {
+            String choiceText = extractStringValue(choiceJson, "text");
+            String targetNode = extractStringValue(choiceJson, "targetNode");
+            
+            if (choiceText != null && targetNode != null) {
+                node.addChoice(choiceText, targetNode);
+            }
+        }
+    }
+    
+    private static void parseConditions(String json, DialogueNode node) {
+        String conditionsJson = extractArrayValue(json, "conditions");
+        if (conditionsJson == null || conditionsJson.isEmpty()) return;
+        
+        List<String> conditionObjects = splitJsonArray(conditionsJson);
+        List<DialogueCondition> conditions = new ArrayList<>();
+        
+        for (String condJson : conditionObjects) {
+            String type = extractStringValue(condJson, "type");
+            DialogueCondition condition = createCondition(type, condJson);
+            if (condition != null) {
+                conditions.add(condition);
+            }
+        }
+        
+        // If multiple conditions, combine with AND
+        if (conditions.size() == 1) {
+            node.setCondition(conditions.get(0));
+        } else if (conditions.size() > 1) {
+            node.setCondition(new DialogueConditions.AndCondition(
+                conditions.toArray(new DialogueCondition[0])
+            ));
+        }
+    }
+    
+    private static DialogueCondition createCondition(String type, String json) {
+        if (type == null) return null;
+        
+        switch (type.toLowerCase()) {
+            case "min_level":
+                String levelStr = extractStringValue(json, "value");
+                if (levelStr != null) {
+                    return new DialogueConditions.MinLevelCondition(
+                        Integer.parseInt(levelStr)
+                    );
+                }
+                break;
+                
+            case "has_quest":
+                String questId = extractStringValue(json, "questId");
+                if (questId != null) {
+                    return new DialogueConditions.HasQuestCondition(questId);
+                }
+                break;
+                
+            case "quest_completed":
+                String completedQuestId = extractStringValue(json, "questId");
+                if (completedQuestId != null) {
+                    return new DialogueConditions.QuestCompletedCondition(completedQuestId);
+                }
+                break;
+        }
+        
+        return null;
+    }
+    
+    private static void parseActions(String json, DialogueNode node) {
+        String actionsJson = extractArrayValue(json, "actions");
+        if (actionsJson == null || actionsJson.isEmpty()) return;
+        
+        List<String> actionObjects = splitJsonArray(actionsJson);
+        
+        for (String actionJson : actionObjects) {
+            String type = extractStringValue(actionJson, "type");
+            DialogueAction action = createAction(type, actionJson);
+            if (action != null) {
+                node.addAction(action);
+            }
+        }
+    }
+    
+    private static DialogueAction createAction(String type, String json) {
+        if (type == null) return null;
+        
+        switch (type.toLowerCase()) {
+            case "award_xp":
+                String xpStr = extractStringValue(json, "amount");
+                if (xpStr != null) {
+                    return new DialogueActions.AwardXPAction(
+                        Integer.parseInt(xpStr)
+                    );
+                }
+                break;
+                
+            case "heal_player":
+                String healStr = extractStringValue(json, "amount");
+                if (healStr != null) {
+                    return new DialogueActions.HealPlayerAction(
+                        Integer.parseInt(healStr)
+                    );
+                }
+                break;
+                
+            case "debug_message":
+                String message = extractStringValue(json, "message");
+                if (message != null) {
+                    return new DialogueActions.DebugMessageAction(message);
+                }
+                break;
+        }
+        
+        return null;
+    }
+    
+    // Helper methods (same as original DialogueLoader)
+    private static String extractStringValue(String json, String key) {
+        String searchKey = "\"" + key + "\"";
+        int keyIndex = json.indexOf(searchKey);
+        if (keyIndex == -1) return null;
+        
+        int colonIndex = json.indexOf(':', keyIndex);
+        if (colonIndex == -1) return null;
+        
+        int valueStart = json.indexOf('"', colonIndex) + 1;
+        if (valueStart == 0) return null;
+        
+        int valueEnd = json.indexOf('"', valueStart);
+        if (valueEnd == -1) return null;
+        
+        return json.substring(valueStart, valueEnd);
+    }
+    
+    private static String extractArrayValue(String json, String key) {
+        String searchKey = "\"" + key + "\"";
+        int keyIndex = json.indexOf(searchKey);
+        if (keyIndex == -1) return null;
+        
+        int colonIndex = json.indexOf(':', keyIndex);
+        if (colonIndex == -1) return null;
+        
+        int arrayStart = json.indexOf('[', colonIndex);
+        if (arrayStart == -1) return null;
+        
+        int bracketCount = 1;
+        int arrayEnd = arrayStart + 1;
+        
+        while (bracketCount > 0 && arrayEnd < json.length()) {
+            char c = json.charAt(arrayEnd);
+            if (c == '[') bracketCount++;
+            else if (c == ']') bracketCount--;
+            arrayEnd++;
+        }
+        
+        return json.substring(arrayStart + 1, arrayEnd - 1);
+    }
+    
+    private static List<String> splitJsonArray(String arrayContent) {
+        List<String> objects = new ArrayList<>();
+        
+        if (arrayContent == null || arrayContent.trim().isEmpty()) {
+            return objects;
+        }
+        
+        int braceCount = 0;
+        int start = 0;
+        
+        for (int i = 0; i < arrayContent.length(); i++) {
+            char c = arrayContent.charAt(i);
+            
+            if (c == '{') {
+                if (braceCount == 0) start = i;
+                braceCount++;
+            } else if (c == '}') {
+                braceCount--;
+                if (braceCount == 0) {
+                    objects.add(arrayContent.substring(start, i + 1));
+                }
+            }
+        }
+        
+        return objects;
+    }
+}

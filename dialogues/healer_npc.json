@@ -1,0 +1,38 @@
+ {
+    "id": "healer_npc",
+    "name": "Village Healer",
+    "startNode": "check_health",
+    "nodes": [
+      {
+        "id": "check_health",
+        "type": "DIALOGUE",
+        "speaker": "Healer",
+        "text": "You look wounded. Would you like me to heal you?",
+        "choices": [
+          {"text": "Yes, please!", "targetNode": "heal"},
+          {"text": "I'm fine, thanks.", "targetNode": "decline"}
+        ]
+      },
+      {
+        "id": "heal",
+        "type": "DIALOGUE",
+        "speaker": "Healer",
+        "text": "There you go! You should feel much better now.",
+        "actions": [
+          {"type": "heal_player", "amount": 100}
+        ],
+        "nextNode": "end"
+      },
+      {
+        "id": "decline",
+        "type": "DIALOGUE",
+        "speaker": "Healer",
+        "text": "Alright, but don't push yourself too hard!",
+        "nextNode": "end"
+      },
+      {
+        "id": "end",
+        "type": "END"
+      }
+    ]
+  }
