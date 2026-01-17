@@ -83,8 +83,16 @@ public class GameLogic {
 	        Sprite sprite = entity.getComponent(Sprite.class);
 	        if (sprite != null) {
 	            sprite.update(delta);
-	        }
+	        } 
 	        
+	        
+	        // ★ NEW: Update quest indicators
+	        QuestIndicator questIndicator = entity.getComponent(QuestIndicator.class);
+	        if (questIndicator != null) { 
+	            questIndicator.update(delta); 
+	            updateNPCQuestIndicators();
+	        }
+	      
 	        TargetIndicator indicator = entity.getComponent(TargetIndicator.class);
 	        if (indicator != null) {
 	            indicator.update(delta);
@@ -1799,13 +1807,13 @@ public class GameLogic {
      * Call this when quest status changes
      */
     private void updateNPCQuestIndicators() {
-        for (Entity entity : state.getEntities()) {
+        for (Entity entity : state.getEntities()) { 
             if (entity.getType() == EntityType.NPC) {
                 NPC npcComponent = entity.getComponent(NPC.class);
                 QuestIndicator questIndicator = entity.getComponent(QuestIndicator.class);
-                
+                	
                 if (npcComponent != null && questIndicator != null) {
-                    updateNPCIndicator(entity, npcComponent, questIndicator);
+                    updateNPCIndicator(entity, npcComponent, questIndicator); System.out.println("ddddddffffffff");
                 }
             }
         }

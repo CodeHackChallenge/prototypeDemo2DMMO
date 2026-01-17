@@ -302,6 +302,17 @@ public class EntityFactory {
     public static Entity createFionne(float x, float y) {
         Entity fionne = createNPC("fionne", "Fionne", x, y);
         
+        //fionne.addComponent(new Position(x, y));
+        //fionne.addComponent(new CollisionBox(32, 48, 16, 24));
+        // ★ NEW: Quest indicator component (initially hidden, updated by IntroQuestHandler)
+        fionne.addComponent(new QuestIndicator(-40));  // Positioned above name tag
+         
+        
+        // Add intro quests (if you want them managed separately)
+        // Quest introQuest = QuestFactory.createIntroQuest();
+        // npc.addQuest(introQuest);
+         
+        
         NPC npcComponent = fionne.getComponent(NPC.class);
         
         // Set custom dialogue

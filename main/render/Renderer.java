@@ -38,7 +38,7 @@ import dev.main.util.Alert;
 import dev.main.util.DamageText;
 import dev.main.util.Dead;
 import dev.main.util.DiamondRenderer;
-import dev.main.util.DamageText.Type;
+import dev.main.util.DamageText.Type; 
 
 /**
  * OPTIMIZED: Fixed double entity sorting and added batched state changes
@@ -82,7 +82,7 @@ public class Renderer {
         renderEntities(g, cameraX, cameraY);
         renderEffects(g, cameraX, cameraY);
         renderWorldUI(g, cameraX, cameraY);
-        renderScreenUI(g, cameraX, cameraY);
+       renderScreenUI(g, cameraX, cameraY);
         
         gameState.getUIManager().render(g);
         
@@ -147,72 +147,7 @@ public class Renderer {
     private void renderEffects(Graphics2D g, float cameraX, float cameraY) {
         drawDamageTexts(g, cameraX, cameraY);
     }
-    /*
-    // ⭐ OPTIMIZED: Use pre-sorted list (no re-sorting!)
-    private void renderWorldUI(Graphics2D g, float cameraX, float cameraY) {
-    	 
-        
-        for (RenderObject ro : sortedRenderObjects) {
-            Entity entity = ro.entity;
-            Position pos = ro.position;
-            
-            int spriteScreenX = (int)Math.round(pos.x - cameraX);
-            int spriteScreenY = (int)Math.round(pos.y - cameraY);
-            
-            Dead dead = entity.getComponent(Dead.class);
-            boolean isDead = dead != null;
-            
-            if (!isDead) {
-                Alert alert = entity.getComponent(Alert.class);
-                if (alert != null) {
-                    drawAlert(g, spriteScreenX, spriteScreenY, alert);
-                }
-                
-                NameTag nameTag = entity.getComponent(NameTag.class);
-                if (nameTag != null && nameTag.visible) {
-                    drawNameTag(g, spriteScreenX, spriteScreenY, nameTag, entity);
-                }
-                
-                if (entity.getType() == EntityType.MONSTER) {
-                    MonsterLevel monsterLevel = entity.getComponent(MonsterLevel.class);
-                    if (monsterLevel != null) {
-                        drawMonsterLevelBadge(g, spriteScreenX, spriteScreenY, monsterLevel);
-                    }
-                }
-                
-                Stats stats = entity.getComponent(Stats.class);
-                HealthBar hpBar = entity.getComponent(HealthBar.class);
-                
-                if (stats != null && hpBar != null) {
-                    drawHealthBar(g, spriteScreenX, spriteScreenY, stats, hpBar);
-                }
-                
-                if (entity.getType() == EntityType.PLAYER) {
-                    StaminaBar staminaBar = entity.getComponent(StaminaBar.class);
-                    if (stats != null && staminaBar != null) {
-                        drawStaminaBar(g, spriteScreenX, spriteScreenY, stats, staminaBar);
-                    }
-                    
-                    ManaBar manaBar = entity.getComponent(ManaBar.class);
-                    if (stats != null && manaBar != null) {
-                        drawManaBar(g, spriteScreenX, spriteScreenY, stats, manaBar);
-                    }
-                    
-                    Experience exp = entity.getComponent(Experience.class);
-                    if (exp != null) {
-                        drawXPBar(g, spriteScreenX, spriteScreenY, exp);
-                        drawLevelBadge(g, spriteScreenX, spriteScreenY, exp.level);
-                    }
-                    
-                    LevelUpEffect levelUpEffect = entity.getComponent(LevelUpEffect.class);
-                    if (levelUpEffect != null && levelUpEffect.active) {
-                        drawLevelUpEffect(g, spriteScreenX, spriteScreenY, levelUpEffect);
-                    }
-                }
-            }
-        }
-    }
-    */
+     
  // ★★★ OPTIMIZED: BATCHED RENDERING BY FONT TYPE ★★★
     private void renderWorldUI(Graphics2D g, float cameraX, float cameraY) {
         Font originalFont = g.getFont();
@@ -250,7 +185,8 @@ public class Renderer {
 	     boolean hasQuestIndicators = false;
 	     for (RenderObject ro : sortedRenderObjects) {
 	         if (ro.entity.getType() == EntityType.NPC) {
-	             QuestIndicator qi = ro.entity.getComponent(QuestIndicator.class);
+	             QuestIndicator qi = ro.entity.getComponent(QuestIndicator.class); 
+	             
 	             if (qi != null && qi.active) {
 	                 hasQuestIndicators = true;
 	                 break;
@@ -554,70 +490,7 @@ public class Renderer {
         
         g.setStroke(originalStroke);
     }
-    /*
-    /////////////////////////
-    // ⭐ OPTIMIZED: Use cached font
-    private void drawMonsterLevelBadge(Graphics2D g, int spriteX, int spriteY, MonsterLevel monsterLevel) {
-        Font originalFont = g.getFont();
-        g.setFont(LEVEL_BADGE_FONT);  // ⭐ Cached
-        
-        String levelText = "Lv" + monsterLevel.level;
-        FontMetrics fm = g.getFontMetrics();
-        int textWidth = fm.stringWidth(levelText);
-        
-        int badgeX = spriteX + 20;
-        int badgeY = spriteY - 30;
-        
-        Color tierColor = getTierColor(monsterLevel.tier);
-        
-        g.setColor(new Color(0, 0, 0, 180));
-        g.fillOval(badgeX - 10, badgeY - 6, 20, 12);
-        
-        g.setColor(tierColor);
-        g.setStroke(new BasicStroke(1.5f));
-        g.drawOval(badgeX - 10, badgeY - 6, 20, 12);
-        
-        g.setColor(Color.WHITE);
-        g.drawString(levelText, badgeX - textWidth/2, badgeY + 3);
-        
-        g.setFont(originalFont);
-    }
-    */
-    /*
-    // ⭐ OPTIMIZED: Use cached font
-    private void drawNameTag(Graphics2D g, int spriteX, int spriteY, NameTag tag, Entity entity) {
-        Font originalFont = g.getFont();
-        g.setFont(NAME_FONT);  // ⭐ Cached
-        
-        String displayName = tag.displayName;
-        Color nameColor = Color.WHITE;
-        
-        if (entity.getType() == EntityType.MONSTER) {
-            MonsterLevel monsterLevel = entity.getComponent(MonsterLevel.class);
-            if (monsterLevel != null) {
-                String tierPrefix = getTierPrefix(monsterLevel.tier);
-                if (tierPrefix != null) {
-                    displayName = tierPrefix + displayName;
-                }
-                nameColor = getTierColor(monsterLevel.tier);
-            }
-        }
-        
-        FontMetrics fm = g.getFontMetrics();
-        int textWidth = fm.stringWidth(displayName);
-        
-        int textX = spriteX - textWidth / 2;
-        int textY = (int)(spriteY + tag.offsetY);
-        
-        g.setColor(Color.BLACK);
-        g.drawString(displayName, textX + 1, textY + 1);
-        
-        g.setColor(nameColor);
-        g.drawString(displayName, textX, textY);
-        
-        g.setFont(originalFont);
-    }
-    */
+     
     private String getTierPrefix(MobTier tier) {
         switch (tier) {
             case ELITE: return "[Elite]";
@@ -750,46 +623,7 @@ public class Renderer {
         
         g.setStroke(originalStroke);
     }
-    /*
-    // ⭐ OPTIMIZED: Use cached fonts
-    private void drawDamageTexts(Graphics2D g, float cameraX, float cameraY) {
-        Font originalFont = g.getFont();
-        
-        for (DamageText dt : gameState.getDamageTexts()) {
-            int screenX = (int)(dt.worldX - cameraX);
-            int screenY = (int)(dt.worldY - cameraY);
-            
-            // ⭐ Use cached fonts
-            if (dt.type == DamageText.Type.CRITICAL) {
-                g.setFont(DAMAGE_CRIT_FONT);
-            } else {
-                g.setFont(DAMAGE_FONT);
-            }
-            
-            FontMetrics fm = g.getFontMetrics();
-            int textWidth = fm.stringWidth(dt.text);
-            
-            int textX = screenX - textWidth / 2;
-            int textY = screenY;
-            
-            int alpha = (int)(dt.getAlpha() * 255);
-            
-            g.setColor(new Color(0, 0, 0, alpha));
-            g.drawString(dt.text, textX + 2, textY + 2);
-            
-            Color textColor = new Color(
-                dt.color.getRed(),
-                dt.color.getGreen(),
-                dt.color.getBlue(),
-                alpha
-            );
-            g.setColor(textColor);
-            g.drawString(dt.text, textX, textY);
-        }
-        
-        g.setFont(originalFont);
-    }
-    */
+    
     // ★★★ OPTIMIZED: Batched damage text rendering
     private void drawDamageTexts(Graphics2D g, float cameraX, float cameraY) {
         Font originalFont = g.getFont();
@@ -839,97 +673,7 @@ public class Renderer {
         g.setColor(textColor);
         g.drawString(dt.text, textX, textY);
     }
-    /*
-    // ⭐ OPTIMIZED: Use cached font
-    private void drawLevelBadge(Graphics2D g, int spriteX, int spriteY, int level) {
-        Font originalFont = g.getFont();
-        g.setFont(LEVEL_BADGE_FONT);  // ⭐ Cached
-        
-        String levelText = "Lv" + level;
-        FontMetrics fm = g.getFontMetrics();
-        int textWidth = fm.stringWidth(levelText);
-        
-        int badgeX = spriteX - 25;
-        int badgeY = spriteY - 35;
-        
-        g.setColor(new Color(0, 0, 0, 180));
-        g.fillOval(badgeX - 12, badgeY - 8, 24, 16);
-        
-        g.setColor(new Color(255, 215, 0));
-        g.setStroke(new BasicStroke(2));
-        g.drawOval(badgeX - 12, badgeY - 8, 24, 16);
-        
-        g.setColor(Color.WHITE);
-        g.drawString(levelText, badgeX - textWidth/2, badgeY + 4);
-        
-        g.setFont(originalFont);
-    }
-    */
-    /*
-    // ⭐ OPTIMIZED: Use cached font
-    private void drawLevelUpEffect(Graphics2D g, int spriteX, int spriteY, LevelUpEffect effect) {
-        if (!effect.active) return;
-        
-        float alpha = effect.getAlpha();
-        int alphaVal = (int)(alpha * 200);
-        
-        Font originalFont = g.getFont();
-        g.setFont(LEVELUP_FONT);  // ⭐ Cached
-        
-        int radius = (int)(30 + (1 - alpha) * 20);
-        g.setColor(new Color(255, 255, 0, alphaVal / 2));
-        g.fillOval(spriteX - radius, spriteY - radius, radius * 2, radius * 2);
-        
-        g.setColor(new Color(255, 215, 0, alphaVal));
-        g.setStroke(new BasicStroke(3));
-        g.drawOval(spriteX - radius, spriteY - radius, radius * 2, radius * 2);
-        
-        String text = "LEVEL " + effect.newLevel;
-        FontMetrics fm = g.getFontMetrics();
-        int textWidth = fm.stringWidth(text);
-        
-        int textY = spriteY - 50 - (int)((1 - alpha) * 20);
-        
-        g.setColor(new Color(0, 0, 0, alphaVal));
-        g.drawString(text, spriteX - textWidth/2 + 2, textY + 2);
-        
-        g.setColor(new Color(255, 215, 0, alphaVal));
-        g.drawString(text, spriteX - textWidth/2, textY);
-        
-        g.setFont(originalFont);
-    }
-    */
-    /*
-    // ⭐ OPTIMIZED: Use cached font
-    private void drawAlert(Graphics2D g, int spriteX, int spriteY, Alert alert) {
-        if (!alert.active) return;
-        
-        Stroke originalStroke = g.getStroke();
-        Font originalFont = g.getFont();
-        
-        int alertX = spriteX;
-        int alertY = (int)(spriteY + alert.offsetY + alert.bounceOffset);
-        
-        g.setFont(ALERT_FONT);  // ⭐ Cached
-        
-        String exclamation = "!";
-        FontMetrics fm = g.getFontMetrics();
-        int textWidth = fm.stringWidth(exclamation);
-        int textHeight = fm.getHeight();
-        
-        int textX = alertX - textWidth / 2;
-        int textY = alertY + textHeight / 4;
-        
-        g.setColor(new Color(0, 0, 0, 150));
-        g.drawString(exclamation, textX + 1, textY + 1);
-        
-        g.setColor(new Color(255, 0, 0, 255));
-        g.drawString(exclamation, textX, textY);
-        
-        g.setStroke(originalStroke);
-        g.setFont(originalFont);
-    }
-    */
+     
     private void drawCollisionBox(Graphics2D g, Position pos, CollisionBox box, float cameraX, float cameraY) {
         int boxX = (int)Math.round(box.getLeft(pos.x) - cameraX);
         int boxY = (int)Math.round(box.getTop(pos.y) - cameraY);
@@ -1132,56 +876,113 @@ public class Renderer {
         
         g.setFont(originalFont);
     }
-
-/**
- * ⭐ NEW: Draw quest indicator (! or ?)
- */
-private void drawQuestIndicator(Graphics2D g, int spriteX, int spriteY, QuestIndicator indicator) {
-    if (!indicator.active) return;
-    
-    Font originalFont = g.getFont();
-    g.setFont(QUEST_INDICATOR_FONT);
-    
-    int indicatorX = spriteX;
-    int indicatorY = (int)(spriteY + indicator.offsetY + indicator.bounceOffset);
-    
-    String symbol;
-    Color color;
-    
-    switch (indicator.type) {
-        case AVAILABLE:
+    /**
+     * ★ UPDATED: Draw quest indicator (! or ? or ...)
+     * This version ensures all indicator types work correctly
+     */
+    private void drawQuestIndicator(Graphics2D g, int spriteX, int spriteY, QuestIndicator indicator) {
+        if (!indicator.active) return;
+        
+        // ★ DEBUG: Add this temporarily to verify it's being called
+        // System.out.println("Drawing quest indicator: type=" + indicator.type);
+        
+        Font originalFont = g.getFont();
+        g.setFont(QUEST_INDICATOR_FONT);
+        
+        int indicatorX = spriteX;
+        int indicatorY = (int)(spriteY + indicator.offsetY + indicator.bounceOffset);
+        
+        String symbol;
+        Color color;
+         
+        if (!indicator.active) {
+            System.out.println("Indicator not active, skipping render");
+            return;
+        }
+        
+        // ★ FIXED: Use if-else instead of switch for enum comparison
+        if (indicator.type == QuestIndicator.IndicatorType.AVAILABLE) {
             symbol = "!";
             color = new Color(255, 215, 0);  // Gold
-            break;
-        case COMPLETE:
+        } else if (indicator.type == QuestIndicator.IndicatorType.COMPLETE) {
             symbol = "?";
             color = new Color(255, 215, 0);  // Gold
-            break;
-        case IN_PROGRESS:
+        } else if (indicator.type == QuestIndicator.IndicatorType.IN_PROGRESS) {
             symbol = "...";
             color = new Color(150, 150, 150);  // Gray
-            break;
-        default:
+        } else {
+            // Default fallback
             symbol = "!";
             color = new Color(255, 215, 0);
+        }
+        
+        FontMetrics fm = g.getFontMetrics();
+        int textWidth = fm.stringWidth(symbol);
+        int textHeight = fm.getHeight();
+        
+        int textX = indicatorX - textWidth / 2;
+        int textY = indicatorY + textHeight / 4;
+        
+        // Shadow
+        g.setColor(new Color(0, 0, 0, 150));
+        g.drawString(symbol, textX + 2, textY + 2);
+        
+        // Text
+        g.setColor(color);
+        g.drawString(symbol, textX, textY);
+        
+        g.setFont(originalFont);
     }
-    
-    FontMetrics fm = g.getFontMetrics();
-    int textWidth = fm.stringWidth(symbol);
-    int textHeight = fm.getHeight();
-    
-    int textX = indicatorX - textWidth / 2;
-    int textY = indicatorY + textHeight / 4;
-    
-    // Shadow
-    g.setColor(new Color(0, 0, 0, 150));
-    g.drawString(symbol, textX + 2, textY + 2);
-    
-    // Text
-    g.setColor(color);
-    g.drawString(symbol, textX, textY);
-    
-    g.setFont(originalFont);
-}
+	/**
+	 * ⭐ NEW: Draw quest indicator (! or ?)
+	 
+	private void drawQuestIndicator(Graphics2D g, int spriteX, int spriteY, QuestIndicator indicator) {
+	    if (!indicator.active) return;
+	    
+	    Font originalFont = g.getFont();
+	    g.setFont(QUEST_INDICATOR_FONT);
+	    
+	    int indicatorX = spriteX;
+	    int indicatorY = (int)(spriteY + indicator.offsetY + indicator.bounceOffset);
+	    
+	    String symbol;
+	    Color color;
+	    
+	    switch (indicator.type) {
+	        case AVAILABLE:
+	            symbol = "!"; 
+	            color = new Color(255, 215, 0);  // Gold
+	            break;
+	        case COMPLETE:   
+	            symbol = "?";
+	            color = new Color(255, 215, 0);  // Gold
+	            break;
+	        case IN_PROGRESS: 
+	            symbol = "...";
+	            color = new Color(150, 150, 150);  // Gray
+	            break;
+	        default:
+	            symbol = "!";
+	            color = new Color(255, 215, 0);
+	    }
+	    
+	    FontMetrics fm = g.getFontMetrics();
+	    int textWidth = fm.stringWidth(symbol);
+	    int textHeight = fm.getHeight();
+	    
+	    int textX = indicatorX - textWidth / 2;
+	    int textY = indicatorY + textHeight / 4;
+	    
+	    // Shadow
+	    g.setColor(new Color(0, 0, 0, 150));
+	    g.drawString(symbol, textX + 2, textY + 2);
+	    
+	    // Text
+	    g.setColor(color);
+	    g.drawString(symbol, textX, textY);
+	    
+	    g.setFont(originalFont);
+	}
+	*/
     
 }

@@ -14,6 +14,7 @@ import dev.main.entity.NameTag;
 import dev.main.entity.Respawn;
 import dev.main.entity.SpawnPoint;
 import dev.main.pathfinder.Pathfinder;
+import dev.main.quest.IntroQuestHandler;  // ★ NEW IMPORT
 import dev.main.stats.Stats;
 import dev.main.tile.TileMap;
 import dev.main.ui.UIManager;
@@ -37,6 +38,9 @@ public class GameState {
     
     // UI
     private UIManager uiManager;
+    
+    // ★ NEW: Intro quest handler
+    private IntroQuestHandler introQuestHandler;
     
     private float gameTime;
     private float cameraX;
@@ -62,10 +66,12 @@ public class GameState {
         
         initializeWorld();
         
-        // ☆ Create UI Manager (GameLogic will be set later)
+        // Create UI Manager (GameLogic will be set later)
         uiManager = new UIManager(this);
-   
         
+        // ★ NEW: Initialize intro quest handler AFTER UIManager
+        introQuestHandler = new IntroQuestHandler(this);
+   
         //test items
         //uiManager.addTestGearItems();
         
@@ -74,21 +80,22 @@ public class GameState {
     }
    
     private void initializeDialogueSystem() {
-    	      DialogueDatabase db = DialogueDatabase.getInstance();
-    	      
-    	      // Load all dialogue files
-    	     db.loadAllDialogues("/dialogues/");
-    	      
-    	     // Create programmatic dialogues
-    	     DialogueExamples.createSimpleGreeting();
-    	     
-    	      // Map NPCs to their dialogues
-    	      db.mapNPCToDialogue("fionne", "fionne_intro");
-    	      
-    	      System.out.println("Dialogue system initialized");
-   }
+        DialogueDatabase db = DialogueDatabase.getInstance();
+        
+        // Load all dialogue files
+        db.loadAllDialogues("/dialogues/");
+        
+        // Create programmatic dialogues
+        DialogueExamples.createSimpleGreeting();
+        
+        // Map NPCs to their dialogues
+        db.mapNPCToDialogue("fionne", "fionne_intro");
+        
+        System.out.println("Dialogue system initialized");
+    }
+    
     /**
-     * ☆ NEW: Set game logic reference for UI Manager
+     * Set game logic reference for UI Manager
      * Call this from Engine after creating GameLogic
      */
     public void setGameLogic(GameLogic gameLogic) {
@@ -100,7 +107,7 @@ public class GameState {
         player = EntityFactory.createPlayer(8 * 64, 5 * 64);
         entities.add(player);
         
-        // ⭐ NEW: Create Fionne NPC
+        // Create Fionne NPC
         Entity fionne = EntityFactory.createFionne(14 * 64 - 32, 6 * 64 - 31);
         entities.add(fionne);
         System.out.println("Fionne NPC created at (13, 5)");
@@ -176,25 +183,23 @@ public class GameState {
     } 
     
     private void addFountain(float x, float y) {
-    	Entity fountain = EntityFactory.createFountain(x, y);
+        Entity fountain = EntityFactory.createFountain(x, y);
         entities.add(fountain);
         System.out.println("Added fountain at (" + (int)x + ", " + (int)y + ")");
-		
-	}
+    }
 
-	private void addBoulder(float x, float y) {
-    	Entity boulder = EntityFactory.createBoulder(x, y);
+    private void addBoulder(float x, float y) {
+        Entity boulder = EntityFactory.createBoulder(x, y);
         entities.add(boulder);
         System.out.println("Added boulder at (" + (int)x + ", " + (int)y + ")");
-		
-	}
-
-	private void addTree(float x, float y, String orientation) {
-    Entity tree = EntityFactory.createTree(x, y, orientation);
-    entities.add(tree);
-    System.out.println("Added tree at (" + (int)x + ", " + (int)y + ")");
     }
-	
+
+    private void addTree(float x, float y, String orientation) {
+        Entity tree = EntityFactory.createTree(x, y, orientation);
+        entities.add(tree);
+        System.out.println("Added tree at (" + (int)x + ", " + (int)y + ")");
+    }
+    
     public void addSpawnPoint(String monsterType, float x, float y, float respawnDelay, int level, MobTier tier) {
         SpawnPoint sp = new SpawnPoint(monsterType, x, y, respawnDelay, level, tier);
         spawnPoints.add(sp);
@@ -391,5 +396,10 @@ public class GameState {
     
     public UIManager getUIManager() {
         return uiManager;
+    }
+    
+    // ★ NEW: Getter for intro quest handler
+    public IntroQuestHandler getIntroQuestHandler() {
+        return introQuestHandler;
     }
 }

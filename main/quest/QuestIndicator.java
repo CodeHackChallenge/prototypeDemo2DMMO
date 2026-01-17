@@ -40,7 +40,7 @@ public class QuestIndicator implements Component {
     
     public void update(float delta) {
         if (!active) return;
-        
+         
         animationTimer += delta;
         
         // Bounce animation
