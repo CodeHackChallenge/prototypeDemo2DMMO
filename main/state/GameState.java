@@ -8,23 +8,32 @@ import dev.main.dialogue.DialogueDatabase;
 import dev.main.dialogue.DialogueExamples;
 import dev.main.entity.Entity;
 import dev.main.entity.EntityFactory;
+import dev.main.entity.EntityType;
 import dev.main.entity.MobTier;
 import dev.main.entity.MonsterLevel;
 import dev.main.entity.NameTag;
 import dev.main.entity.Respawn;
 import dev.main.entity.SpawnPoint;
+import dev.main.input.Position;
 import dev.main.pathfinder.Pathfinder;
 import dev.main.quest.IntroQuestHandler;  // ★ NEW IMPORT
 import dev.main.stats.Stats;
 import dev.main.tile.TileMap;
 import dev.main.ui.UIManager;
 import dev.main.util.DamageText;
+import dev.main.util.MapData;
 
 import java.util.Iterator;
 
 public class GameState {
-    
+	
+	// ★ ADD: Current map tracking
+    private String currentMapId;  
     private TileMap map;
+    // ★ ADD: Portal cooldown (prevent spam teleporting)
+    private float portalCooldown = 0f;
+    private static final float PORTAL_COOLDOWN_TIME = 2.0f;
+    
     private List<Entity> entities;
     private List<Entity> entitiesToRemove;
     private List<DamageText> damageTexts;
@@ -42,6 +51,7 @@ public class GameState {
     // ★ NEW: Intro quest handler
     private IntroQuestHandler introQuestHandler;
     
+    
     private float gameTime;
     private float cameraX;
     private float cameraY;
@@ -56,13 +66,23 @@ public class GameState {
         cameraX = 0f;
         cameraY = 0f;
         
-        // Load map
-        if(Engine.IDE == Engine.Eclipse)
-        	map = new TileMap("/maps/env_fionne_map.png", "/maps/fionnes_introMap01.txt");
-        else if(Engine.IDE == Engine.VSCode)
-        	map = new TileMap("resources/maps/env_fionne_map.png", "resources/maps/fionnes_introMap01.txt");
+        // ★ Load initial map
+        loadMap("intro_map");
+        /*
+        // ★ OPTION 1: Load from JSON
+        if(Engine.IDE == Engine.Eclipse) {
+            map = new TileMap("/maps/intro_map.json");
+        } else if(Engine.IDE == Engine.VSCode) {
+            map = new TileMap("resources/maps/intro_map.json");
+        }
         
-        pathfinder = new Pathfinder(map);
+        // ★ OPTION 2: Load map from .txt
+        if(Engine.IDE == Engine.Eclipse)
+        	map = new TileMap("/maps/intro_map.png", "/maps/fionnes_introMap01.txt");
+        else if(Engine.IDE == Engine.VSCode)
+        	map = new TileMap("resources/maps/intro_map.png", "resources/maps/fionnes_introMap01.txt");
+        */
+        pathfinder = new Pathfinder(map); 
         
         initializeWorld();
         
@@ -78,7 +98,92 @@ public class GameState {
         // Initialize dialogue system
         initializeDialogueSystem();
     }
-   
+    // ★ NEW: Load map by ID
+    public void loadMap(String mapId) {
+        this.currentMapId = mapId;
+        
+        String jsonPath;
+        if(Engine.IDE == Engine.Eclipse) {
+            jsonPath = "/maps/" + mapId + ".json";
+        } else {
+            jsonPath = "resources/maps/" + mapId + ".json";
+        }
+        
+        map = new TileMap(jsonPath);
+        
+        // Create pathfinder for new map
+        if (pathfinder != null) {
+            pathfinder = new Pathfinder(map);
+        }
+        
+        System.out.println("Loaded map: " + mapId);
+    }
+    // ★ UPDATED: Change map with instant camera snap
+    public void changeMap(String newMapId, int targetTileX, int targetTileY) {
+        System.out.println("Changing map: " + currentMapId + " → " + newMapId);
+        
+        // Clear current map entities (except player)
+        clearMapEntities();
+        
+        // Load new map
+        loadMap(newMapId);
+        
+        // Move player to spawn position
+        Entity player = getPlayer();
+        Position playerPos = player.getComponent(Position.class);
+        if (playerPos != null) {
+            playerPos.x = targetTileX * TileMap.TILE_SIZE + TileMap.TILE_SIZE / 2f;
+            playerPos.y = targetTileY * TileMap.TILE_SIZE + TileMap.TILE_SIZE / 2f;
+        }
+        
+        // ★ NEW: Snap camera immediately to new player position
+        snapCameraToPlayer();
+        
+        // Re-initialize world for new map
+        initializeWorld();
+        
+        System.out.println("Map change complete! Player at (" + targetTileX + ", " + targetTileY + ")");
+    }
+    // ★ NEW: Instantly snap camera to player (no lerp)
+    private void snapCameraToPlayer() {
+        Entity player = getPlayer();
+        Position playerPos = player.getComponent(Position.class);
+        TileMap map = getMap();
+        
+        if (playerPos != null && map != null) {
+            float targetX = playerPos.x - Engine.WIDTH / 2;
+            float targetY = playerPos.y - Engine.HEIGHT / 2;
+            
+            // Clamp to map bounds
+            float maxCameraX = map.getWidthInPixels() - Engine.WIDTH;
+            float maxCameraY = map.getHeightInPixels() - Engine.HEIGHT;
+            
+            targetX = Math.max(0, Math.min(targetX, maxCameraX));
+            targetY = Math.max(0, Math.min(targetY, maxCameraY));
+            
+            // Instant snap
+            setCameraPosition(targetX, targetY);
+            
+            System.out.println("📹 Camera snapped to (" + (int)targetX + ", " + (int)targetY + ")");
+        }
+    }
+
+    // ★ NEW: Clear all entities except player
+    private void clearMapEntities() {
+        List<Entity> toRemove = new ArrayList<>();
+        
+        for (Entity entity : entities) {
+            if (entity.getType() != EntityType.PLAYER) {
+                toRemove.add(entity);
+            }
+        }
+        
+        entities.removeAll(toRemove);
+        spawnPoints.clear();
+        damageTexts.clear();
+        
+        System.out.println("Cleared " + toRemove.size() + " entities from old map");
+    }
     private void initializeDialogueSystem() {
         DialogueDatabase db = DialogueDatabase.getInstance();
         
@@ -103,16 +208,25 @@ public class GameState {
     }
     
     private void initializeWorld() {
-        // Create player
-        player = EntityFactory.createPlayer(8 * 64, 5 * 64);
-        entities.add(player);
+    	 // Only create player if it doesn't exist
+        if (player == null) {
+            player = EntityFactory.createPlayer(8 * 64, 5 * 64);
+            entities.add(player);
+        }
         
-        // Create Fionne NPC
-        Entity fionne = EntityFactory.createFionne(14 * 64 - 32, 6 * 64 - 31);
-        entities.add(fionne);
-        System.out.println("Fionne NPC created at (13, 5)");
-       
+        // ★ Load portals from map data
+        loadPortalsFromMapData();
+        // ★ Load spawns from map data
+        loadSpawnsFromMapData();
+          
+     // Add NPCs (map-specific)
+        if ("intro_map".equals(currentMapId)) {
+            Entity fionne = EntityFactory.createFionne(14 * 64 - 32, 6 * 64 - 31);
+            entities.add(fionne);
+        } 
         
+        // ★ OR keep manual spawns (your choice)
+        /*
         float normalRespawn = 30f;
         float bossRespawn = 50f;
         
@@ -145,7 +259,7 @@ public class GameState {
         
         // ELITE goblin
         addSpawnPoint("Goblin", 14 * 64, 10 * 64, normalRespawn, 3, MobTier.ELITE);
-        /*
+       
         // NORMAL bunnies
         addSpawnPoint("Bunny", 20 * 64, 20 * 64, normalRespawn, 1, MobTier.NORMAL);
         addSpawnPoint("Bunny", 20 * 64, 21 * 64, normalRespawn, 2, MobTier.NORMAL);
@@ -160,27 +274,108 @@ public class GameState {
         addSpawnPoint("GoblinBoss", 13 * 64, 12 * 64, bossRespawn, 5, MobTier.MINIBOSS);
         addSpawnPoint("BunnyBoss", 22 * 64, 23 * 64, bossRespawn, 5, MobTier.MINIBOSS);
         addSpawnPoint("MinotaurBoss", 22 * 64, 21 * 64, bossRespawn, 7, MobTier.MINIBOSS);
-         */
+        
         // Initial spawn of all monsters
         for (SpawnPoint sp : spawnPoints) {
             spawnMonsterAtPoint(sp);
         }
-          
-        //add boulder
-        addBoulder(4 * 64 - 13,  3 * 64 - 18);
-        // User-requested tree at tile (5,5)
-        addTree(2 * 64 - 30, 1 * 64 - 25, "right");
-        addTree(1 * 64 - 32, 8 * 64 - 66, "right");
-        addTree(3 * 64 - 6 , 14 * 64 -10  , "right");
-        //
-        addTree(19 * 64 - 6 , 0 * 64 - 10 , "right");
-        addTree(20 * 64 - 6 , 6 * 64 - 10 , "right");
-        addTree(18 * 64 - 6 , 12 * 64 - 10 , "right");
-        addTree(13 * 64 - 6 , 13 * 64 - 10 , "right");
-        //fountain
-        addFountain(15 * 64 - 6 , 4 * 64 - 10 );
+          */ 
+        
+        // Add environment decorations (map-specific)
+        if ("intro_map".equals(currentMapId)) {
+        	//add boulder
+            addBoulder(4 * 64 - 13,  3 * 64 - 18);
+            // User-requested tree at tile (5,5)
+            addTree(2 * 64 - 30, 1 * 64 - 25, "right");
+            addTree(1 * 64 - 32, 8 * 64 - 66, "right");
+            addTree(3 * 64 - 6 , 14 * 64 -10  , "right");
+            //
+            addTree(19 * 64 - 6 , 0 * 64 - 10 , "right");
+            addTree(20 * 64 - 6 , 6 * 64 - 10 , "right");
+            addTree(18 * 64 - 6 , 12 * 64 - 10 , "right");
+            addTree(13 * 64 - 6 , 13 * 64 - 10 , "right");
+            //fountain
+            addFountain(15 * 64 - 6 , 4 * 64 - 10 );
+        }
+        
         
     } 
+    // ★ NEW: Load portals from map JSON
+    private void loadPortalsFromMapData() {
+        MapData data = map.getMapData();
+        if (data == null || data.portals == null) {
+            System.out.println("No portal data in map JSON");
+            return;
+        }
+        
+        System.out.println("Loading " + data.portals.size() + " portals from JSON...");
+        
+        for (MapData.Portal portalData : data.portals) {
+            float worldX = portalData.x * TileMap.TILE_SIZE + TileMap.TILE_SIZE / 2f;
+            float worldY = portalData.y * TileMap.TILE_SIZE + TileMap.TILE_SIZE / 2f;
+            
+            Entity portal = EntityFactory.createPortal(
+                portalData.id,
+                worldX,
+                worldY,
+                portalData.targetMap,
+                portalData.targetX,
+                portalData.targetY
+            );
+            
+            entities.add(portal);
+            
+            System.out.println("  - " + portalData.id + " → " + portalData.targetMap + 
+                             " (" + portalData.targetX + ", " + portalData.targetY + ")");
+        }
+    }
+    // ★ NEW: Update portal cooldown
+    public void updatePortalCooldown(float delta) {
+        if (portalCooldown > 0) {
+            portalCooldown -= delta;
+        }
+    }
+    // ★ NEW: Check if portal is ready
+    public boolean isPortalReady() {
+        return portalCooldown <= 0;
+    }
+    
+    // ★ NEW: Set portal cooldown
+    public void setPortalCooldown() {
+        this.portalCooldown = PORTAL_COOLDOWN_TIME;
+    }
+    
+    // ★ NEW: Getters
+    public String getCurrentMapId() {
+        return currentMapId;
+    }
+    // ★ ADD THIS METHOD to load spawns from JSON
+    private void loadSpawnsFromMapData() {
+        MapData data = map.getMapData();
+        if (data == null || data.monsterSpawns == null) {
+            System.out.println("No spawn data in map JSON");
+            return;
+        }
+        
+        System.out.println("Loading " + data.monsterSpawns.size() + " spawn points from JSON...");
+        
+        for (MapData.MonsterSpawn spawn : data.monsterSpawns) {
+            // Convert tier string to enum
+            MobTier tier = MobTier.valueOf(spawn.tier.toUpperCase());
+            
+            addSpawnPoint(
+                spawn.monsterType,
+                spawn.x,
+                spawn.y,
+                spawn.respawnDelay,
+                spawn.level,
+                tier
+            );
+            
+            System.out.println("  - " + spawn.id + ": " + spawn.monsterType + 
+                             " Lv" + spawn.level + " " + tier);
+        }
+    }
     
     private void addFountain(float x, float y) {
         Entity fountain = EntityFactory.createFountain(x, y);

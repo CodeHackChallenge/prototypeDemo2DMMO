@@ -2,11 +2,17 @@ package dev.main.pathfinder;
 
 import java.util.*;
 
+import dev.main.input.CollisionBox;
 import dev.main.tile.TileMap;
 
+/**
+ * ★ IMPROVED: Collision-box-aware pathfinding
+ * Now checks if the ENTIRE collision box fits, not just the center point
+ */
 public class Pathfinder {
     
     private TileMap map;
+    private CollisionBox entityCollisionBox; // ★ NEW: Store entity's collision box
     
     private static final float DIAGONAL_COST = 1.414f;
     private static final float STRAIGHT_COST = 1.0f;
@@ -15,9 +21,45 @@ public class Pathfinder {
         this.map = map;
     }
     
+    /**
+     * ★ NEW: Set the collision box to use for pathfinding
+     * Call this before finding a path for entities with large collision boxes
+     */
+    public void setCollisionBox(CollisionBox box) {
+        this.entityCollisionBox = box;
+    }
+    
+    /**
+     * ★ NEW: Clear collision box (for simple pathfinding)
+     */
+    public void clearCollisionBox() {
+        this.entityCollisionBox = null;
+    }
+    
+    /**
+     * ★ IMPROVED: Find path considering entity's collision box
+     */
     public List<int[]> findPath(int startX, int startY, int goalX, int goalY) {
         
-        if (map.isSolid(goalX, goalY)) {
+        // Check if goal tile can fit the collision box
+        if (entityCollisionBox != null) {
+            float goalWorldX = goalX * TileMap.TILE_SIZE + TileMap.TILE_SIZE / 2f;
+            float goalWorldY = goalY * TileMap.TILE_SIZE + TileMap.TILE_SIZE / 2f;
+            
+            if (map.collidesWithTiles(entityCollisionBox, goalWorldX, goalWorldY)) {
+               // System.out.println("⚠ Goal tile can't fit collision box - trying nearby tiles...");
+                
+                // Try to find a nearby walkable tile
+                int[] nearbyGoal = findNearestWalkableTile(goalX, goalY, 3);
+                if (nearbyGoal != null) {
+                    goalX = nearbyGoal[0];
+                    goalY = nearbyGoal[1];
+                   // System.out.println("✓ Using nearby tile: (" + goalX + ", " + goalY + ")");
+                } else {
+                    return null; // No nearby walkable tiles
+                }
+            }
+        } else if (map.isSolid(goalX, goalY)) {
             return null;
         }
         
@@ -50,12 +92,12 @@ public class Pathfinder {
             
             closedSet.add(current);
             
-            // Check all 8 neighbors with diagonal blocking
             for (Neighbor neighbor : getValidNeighbors(current.x, current.y)) {
                 int nx = neighbor.x;
                 int ny = neighbor.y;
                 
-                if (map.isSolid(nx, ny)) {
+                // ★ IMPROVED: Check if collision box fits at this tile
+                if (!canOccupyTile(nx, ny)) {
                     continue;
                 }
                 
@@ -90,6 +132,51 @@ public class Pathfinder {
         return null;
     }
     
+    /**
+     * ★ NEW: Check if entity's collision box can fit at this tile
+     */
+    private boolean canOccupyTile(int tileX, int tileY) {
+        if (entityCollisionBox == null) {
+            // No collision box - just check if tile is solid
+            return canMove(tileX, tileY);
+        }
+        
+        // Convert tile to world coordinates (center of tile)
+        float worldX = tileX * TileMap.TILE_SIZE + TileMap.TILE_SIZE / 2f;
+        float worldY = tileY * TileMap.TILE_SIZE + TileMap.TILE_SIZE / 2f;
+        
+        // Check if collision box at this position would collide
+        return !map.collidesWithTiles(entityCollisionBox, worldX, worldY);
+    }
+    
+    /**
+     * ★ NEW: Find nearest walkable tile within radius
+     */
+    private int[] findNearestWalkableTile(int centerX, int centerY, int radius) {
+        int bestX = -1;
+        int bestY = -1;
+        float bestDist = Float.MAX_VALUE;
+        
+        for (int dy = -radius; dy <= radius; dy++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                int tx = centerX + dx;
+                int ty = centerY + dy;
+                
+                if (canOccupyTile(tx, ty)) {
+                    float dist = (float)Math.sqrt(dx * dx + dy * dy);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        bestX = tx;
+                        bestY = ty;
+                    }
+                }
+            }
+        }
+        
+        if (bestX == -1) return null;
+        return new int[]{bestX, bestY};
+    }
+    
     private float heuristic(PathNode a, PathNode b) {
         int dx = Math.abs(a.x - b.x);
         int dy = Math.abs(a.y - b.y);
@@ -115,7 +202,6 @@ public class Pathfinder {
         if (canGoWest) neighbors.add(new Neighbor(x - 1, y, false));
         
         // Add diagonal directions ONLY if both adjacent cardinals are passable
-        // This prevents corner-cutting through solid tiles
         
         // Northeast: need North AND East to be clear
         if (canGoNorth && canGoEast && canMove(x + 1, y - 1)) {
@@ -176,22 +262,3 @@ public class Pathfinder {
         }
     }
 }
-/*
-```
-
-## How It Works
-
-**Before (Buggy):**
-```
-0 0 0 0
-0 3 H 3
-0 T 3 0
-```
-Hero could path diagonally from H to the tile below-left, cutting through the corner between the two `3` tiles.
-
-**After (Fixed):**
-```
-0 0 0 0
-0 3 H 3
-0 T 3 0
-*/

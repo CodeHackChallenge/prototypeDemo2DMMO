@@ -23,6 +23,7 @@ import dev.main.entity.LevelUpEffect;
 import dev.main.entity.MobTier;
 import dev.main.entity.MonsterLevel;
 import dev.main.entity.NameTag;
+import dev.main.entity.Portal;
 import dev.main.entity.SpawnPoint;
 import dev.main.entity.TargetIndicator;
 import dev.main.input.CollisionBox;
@@ -37,7 +38,6 @@ import dev.main.tile.TileMap;
 import dev.main.util.Alert;
 import dev.main.util.DamageText;
 import dev.main.util.Dead;
-import dev.main.util.DiamondRenderer;
 import dev.main.util.DamageText.Type; 
 
 /**
@@ -82,7 +82,7 @@ public class Renderer {
         renderEntities(g, cameraX, cameraY);
         renderEffects(g, cameraX, cameraY);
         renderWorldUI(g, cameraX, cameraY);
-       renderScreenUI(g, cameraX, cameraY);
+        renderScreenUI(g, cameraX, cameraY);
         
         gameState.getUIManager().render(g);
         
@@ -118,7 +118,23 @@ public class Renderer {
     }
     
     private void renderGroundDecor(Graphics2D g, float cameraX, float cameraY) {
+        
+    	// ★ Render portals first (under entities)
         for (Entity entity : gameState.getEntities()) {
+            if (entity.getType() == EntityType.PORTAL) {
+                Position pos = entity.getComponent(Position.class);
+                Portal portal = entity.getComponent(Portal.class);
+                
+                if (pos != null && portal != null) {
+                    int screenX = (int)Math.round(pos.x - cameraX);
+                    int screenY = (int)Math.round(pos.y - cameraY);
+                    
+                    PortalRenderer.renderPortal(g, screenX, screenY, portal);
+                }
+            }
+        }
+        
+    	for (Entity entity : gameState.getEntities()) {
             TargetIndicator indicator = entity.getComponent(TargetIndicator.class);
             if (indicator != null && indicator.active) {
                 int screenX = (int)Math.round(indicator.worldX - cameraX);
@@ -152,8 +168,8 @@ public class Renderer {
     private void renderWorldUI(Graphics2D g, float cameraX, float cameraY) {
         Font originalFont = g.getFont();
         
-        // ========================================
-        // BATCH 1: ALERTS (if any active)
+     // ========================================
+        // BATCH 1: ALERTS (existing code - keep as is)
         // ========================================
         boolean hasAlerts = false;
         for (RenderObject ro : sortedRenderObjects) {
@@ -179,40 +195,60 @@ public class Renderer {
             }
         }
         
-	     // ========================================
-	     // BATCH: QUEST INDICATORS
-	     // ========================================
-	     boolean hasQuestIndicators = false;
-	     for (RenderObject ro : sortedRenderObjects) {
-	         if (ro.entity.getType() == EntityType.NPC) {
-	             QuestIndicator qi = ro.entity.getComponent(QuestIndicator.class); 
-	             
-	             if (qi != null && qi.active) {
-	                 hasQuestIndicators = true;
-	                 break;
-	             }
-	         }
-	     }
-	
-	     if (hasQuestIndicators) {
-	         g.setFont(QUEST_INDICATOR_FONT);
-	         for (RenderObject ro : sortedRenderObjects) {
-	             if (ro.entity.getType() == EntityType.NPC) {
-	                 Dead dead = ro.entity.getComponent(Dead.class);
-	                 if (dead != null) continue;
-	                 
-	                 QuestIndicator qi = ro.entity.getComponent(QuestIndicator.class);
-	                 if (qi != null && qi.active) {
-	                     int screenX = (int)Math.round(ro.position.x - cameraX);
-	                     int screenY = (int)Math.round(ro.position.y - cameraY);
-	                     drawQuestIndicator(g, screenX, screenY, qi);
-	                 }
-	             }
-	         }
-	     }
-        
+     // BATCH: QUEST INDICATORS (Clean version)
+        g.setFont(QUEST_INDICATOR_FONT);
+
+        for (Entity entity : gameState.getEntities()) {
+            if (entity.getType() != EntityType.NPC) continue;
+            
+            Dead dead = entity.getComponent(Dead.class);
+            if (dead != null) continue;
+            
+            Position pos = entity.getComponent(Position.class);
+            if (pos == null) continue;
+            
+            QuestIndicator qi = entity.getComponent(QuestIndicator.class);
+            if (qi == null || !qi.active) continue;
+            
+            int screenX = (int)Math.round(pos.x - cameraX);
+            int screenY = (int)Math.round(pos.y - cameraY);
+            
+            // Get symbol and color
+            String symbol;
+            Color color;
+            
+            if (qi.type == QuestIndicator.IndicatorType.IN_PROGRESS) {
+                symbol = qi.getSymbol();//"...";
+                color = qi.getColor();//new Color(150, 150, 150);
+            } else if (qi.type == QuestIndicator.IndicatorType.COMPLETE) {
+                symbol = qi.getSymbol();//"?";
+                color = qi.getColor();//new Color(255, 215, 0);
+            } else {
+                symbol = qi.getSymbol();//"!";
+                color = qi.getColor();//new Color(255, 215, 0);
+            }
+            
+            // Draw indicator
+            int indicatorX = screenX;
+            int indicatorY = (int)(screenY + qi.offsetY + qi.bounceOffset);
+            
+            FontMetrics fm = g.getFontMetrics();
+            int textWidth = fm.stringWidth(symbol);
+            int textHeight = fm.getHeight();
+            
+            int textX = indicatorX - textWidth / 2;
+            int textY = indicatorY + textHeight / 4;
+            
+            // Shadow
+            g.setColor(new Color(0, 0, 0, 150));
+            g.drawString(symbol, textX + 2, textY + 2);
+            
+            // Symbol
+            g.setColor(color);
+            g.drawString(symbol, textX, textY);
+        }
         // ========================================
-        // BATCH 2: LEVEL BADGES
+        // BATCH 2: LEVEL BADGES (existing code - keep as is)
         // ========================================
         g.setFont(LEVEL_BADGE_FONT);
         
@@ -223,7 +259,6 @@ public class Renderer {
             int screenX = (int)Math.round(ro.position.x - cameraX);
             int screenY = (int)Math.round(ro.position.y - cameraY);
             
-            // Monster level badges
             if (ro.entity.getType() == EntityType.MONSTER) {
                 MonsterLevel monsterLevel = ro.entity.getComponent(MonsterLevel.class);
                 NameTag nameTag = ro.entity.getComponent(NameTag.class);
@@ -232,7 +267,6 @@ public class Renderer {
                     drawMonsterLevelBadgeOnly(g, screenX, screenY, monsterLevel);
                 }
             }
-            // Player level badges
             else if (ro.entity.getType() == EntityType.PLAYER) {
                 Experience exp = ro.entity.getComponent(Experience.class);
                 if (exp != null) {
@@ -691,32 +725,55 @@ public class Renderer {
     }
     
     private void drawTileGrid(Graphics2D g, TileMap map, float cameraX, float cameraY) {
+        if (map == null) return;
+        
+        int mapWidth = map.getWidth();
+        int mapHeight = map.getHeight();
+        
+        if (mapWidth <= 0 || mapHeight <= 0) return;
+        
+        // Calculate visible tile range (inclusive)
         int startCol = Math.max(0, (int)(cameraX / TileMap.TILE_SIZE));
-        int endCol = Math.min(map.getWidth(), (int)((cameraX + Engine.WIDTH) / TileMap.TILE_SIZE) + 1);
-        
         int startRow = Math.max(0, (int)(cameraY / TileMap.TILE_SIZE));
-        int endRow = Math.min(map.getHeight(), (int)((cameraY + Engine.HEIGHT) / TileMap.TILE_SIZE) + 1);
+        int endCol = Math.min(mapWidth - 1, (int)((cameraX + Engine.WIDTH - 1) / TileMap.TILE_SIZE));
+        int endRow = Math.min(mapHeight - 1, (int)((cameraY + Engine.HEIGHT - 1) / TileMap.TILE_SIZE));
         
+        // Sanity check
+        if (startCol > endCol || startRow > endRow) return;
+        
+        // Draw grid lines
         g.setColor(new Color(255, 255, 255, 100));
         g.setStroke(new BasicStroke(1));
         
-        for (int col = startCol; col <= endCol; col++) {
+        // Vertical lines (from startCol to endCol+1, clamped to mapWidth)
+        int maxVerticalLine = Math.min(endCol + 1, mapWidth);
+        for (int col = startCol; col <= maxVerticalLine; col++) {
             int x = (int)(col * TileMap.TILE_SIZE - cameraX);
-            g.drawLine(x, 0, x, Engine.HEIGHT);
+            if (x >= 0 && x <= Engine.WIDTH) {
+                g.drawLine(x, 0, x, Engine.HEIGHT);
+            }
         }
         
-        for (int row = startRow; row <= endRow; row++) {
+        // Horizontal lines (from startRow to endRow+1, clamped to mapHeight)
+        int maxHorizontalLine = Math.min(endRow + 1, mapHeight);
+        for (int row = startRow; row <= maxHorizontalLine; row++) {
             int y = (int)(row * TileMap.TILE_SIZE - cameraY);
-            g.drawLine(0, y, Engine.WIDTH, y);
+            if (y >= 0 && y <= Engine.HEIGHT) {
+                g.drawLine(0, y, Engine.WIDTH, y);
+            }
         }
         
+        // Draw solid tiles (red overlay)
         g.setColor(new Color(255, 0, 0, 80));
-        for (int row = startRow; row < endRow; row++) {
-            for (int col = startCol; col < endCol; col++) {
-                if (map.isSolid(col, row)) {
-                    int x = (int)(col * TileMap.TILE_SIZE - cameraX);
-                    int y = (int)(row * TileMap.TILE_SIZE - cameraY);
-                    g.fillRect(x, y, TileMap.TILE_SIZE, TileMap.TILE_SIZE);
+        for (int row = startRow; row <= endRow; row++) {
+            for (int col = startCol; col <= endCol; col++) {
+                // Triple-check bounds (paranoid but safe)
+                if (col >= 0 && col < mapWidth && row >= 0 && row < mapHeight) {
+                    if (map.isSolid(col, row)) {
+                        int x = (int)(col * TileMap.TILE_SIZE - cameraX);
+                        int y = (int)(row * TileMap.TILE_SIZE - cameraY);
+                        g.fillRect(x, y, TileMap.TILE_SIZE, TileMap.TILE_SIZE);
+                    }
                 }
             }
         }
@@ -876,113 +933,6 @@ public class Renderer {
         
         g.setFont(originalFont);
     }
-    /**
-     * ★ UPDATED: Draw quest indicator (! or ? or ...)
-     * This version ensures all indicator types work correctly
-     */
-    private void drawQuestIndicator(Graphics2D g, int spriteX, int spriteY, QuestIndicator indicator) {
-        if (!indicator.active) return;
-        
-        // ★ DEBUG: Add this temporarily to verify it's being called
-        // System.out.println("Drawing quest indicator: type=" + indicator.type);
-        
-        Font originalFont = g.getFont();
-        g.setFont(QUEST_INDICATOR_FONT);
-        
-        int indicatorX = spriteX;
-        int indicatorY = (int)(spriteY + indicator.offsetY + indicator.bounceOffset);
-        
-        String symbol;
-        Color color;
-         
-        if (!indicator.active) {
-            System.out.println("Indicator not active, skipping render");
-            return;
-        }
-        
-        // ★ FIXED: Use if-else instead of switch for enum comparison
-        if (indicator.type == QuestIndicator.IndicatorType.AVAILABLE) {
-            symbol = "!";
-            color = new Color(255, 215, 0);  // Gold
-        } else if (indicator.type == QuestIndicator.IndicatorType.COMPLETE) {
-            symbol = "?";
-            color = new Color(255, 215, 0);  // Gold
-        } else if (indicator.type == QuestIndicator.IndicatorType.IN_PROGRESS) {
-            symbol = "...";
-            color = new Color(150, 150, 150);  // Gray
-        } else {
-            // Default fallback
-            symbol = "!";
-            color = new Color(255, 215, 0);
-        }
-        
-        FontMetrics fm = g.getFontMetrics();
-        int textWidth = fm.stringWidth(symbol);
-        int textHeight = fm.getHeight();
-        
-        int textX = indicatorX - textWidth / 2;
-        int textY = indicatorY + textHeight / 4;
-        
-        // Shadow
-        g.setColor(new Color(0, 0, 0, 150));
-        g.drawString(symbol, textX + 2, textY + 2);
-        
-        // Text
-        g.setColor(color);
-        g.drawString(symbol, textX, textY);
-        
-        g.setFont(originalFont);
-    }
-	/**
-	 * ⭐ NEW: Draw quest indicator (! or ?)
-	 
-	private void drawQuestIndicator(Graphics2D g, int spriteX, int spriteY, QuestIndicator indicator) {
-	    if (!indicator.active) return;
-	    
-	    Font originalFont = g.getFont();
-	    g.setFont(QUEST_INDICATOR_FONT);
-	    
-	    int indicatorX = spriteX;
-	    int indicatorY = (int)(spriteY + indicator.offsetY + indicator.bounceOffset);
-	    
-	    String symbol;
-	    Color color;
-	    
-	    switch (indicator.type) {
-	        case AVAILABLE:
-	            symbol = "!"; 
-	            color = new Color(255, 215, 0);  // Gold
-	            break;
-	        case COMPLETE:   
-	            symbol = "?";
-	            color = new Color(255, 215, 0);  // Gold
-	            break;
-	        case IN_PROGRESS: 
-	            symbol = "...";
-	            color = new Color(150, 150, 150);  // Gray
-	            break;
-	        default:
-	            symbol = "!";
-	            color = new Color(255, 215, 0);
-	    }
-	    
-	    FontMetrics fm = g.getFontMetrics();
-	    int textWidth = fm.stringWidth(symbol);
-	    int textHeight = fm.getHeight();
-	    
-	    int textX = indicatorX - textWidth / 2;
-	    int textY = indicatorY + textHeight / 4;
-	    
-	    // Shadow
-	    g.setColor(new Color(0, 0, 0, 150));
-	    g.drawString(symbol, textX + 2, textY + 2);
-	    
-	    // Text
-	    g.setColor(color);
-	    g.drawString(symbol, textX, textY);
-	    
-	    g.setFont(originalFont);
-	}
-	*/
+    
     
 }

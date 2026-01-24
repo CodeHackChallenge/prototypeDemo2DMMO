@@ -29,8 +29,12 @@ public class IntroQuestHandler {
         STAGE_2_COMPLETE,      // Sword equipped, stats unlocked
         STAGE_3_DIALOGUE,      // Second quest dialogue shown
         STAGE_3_COMPLETE,      // Rune received, blessing granted
+        STAGE_4_DIALOGUE,	   // unlock quest menu	
+        STAGE_4_COMPLETE,
         ALL_COMPLETE           // All intro quests finished
     }
+    
+    private boolean initializedIndicator = false;
     
     private IntroStage currentStage;
     private GameState gameState;
@@ -41,9 +45,51 @@ public class IntroQuestHandler {
         this.gameState = gameState;
         this.player = gameState.getPlayer();
         this.currentStage = IntroStage.NOT_STARTED;
-        this.fionneEntity = null;  // Will be set on first interaction
+        this.fionneEntity = null;
+        
+        // ★ NEW: Initialize Fionne's indicator on startup
+        initializeFionneIndicator();
     }
     
+    /**
+     * ★ NEW: Call this from GameLogic.update() to ensure indicator is set
+     * This handles the case where entities aren't loaded during construction
+     */
+    public void update(float delta) {
+        if (!initializedIndicator) {
+            initializeFionneIndicator();
+            initializedIndicator = (fionneEntity != null);
+        }
+    }
+    /**
+     * ★ NEW: Initialize Fionne's quest indicator on game startup
+     * This ensures the "!" appears immediately when the game loads
+     */
+    private void initializeFionneIndicator() {
+        // Small delay to ensure entities are fully loaded
+        // We'll do this in the first update cycle instead
+        // For now, try to find and update Fionne immediately
+        
+        for (Entity entity : gameState.getEntities()) {
+            NPC npc = entity.getComponent(NPC.class);
+            if (npc != null && "fionne".equals(npc.getNpcId())) {
+                fionneEntity = entity;
+                QuestIndicator indicator = entity.getComponent(QuestIndicator.class);
+                
+                if (indicator != null) {
+                    // Show "!" for available quest
+                    indicator.show(QuestIndicator.IndicatorType.AVAILABLE);
+                    System.out.println("[INTRO QUEST] Initialized Fionne's indicator: ! (AVAILABLE)");
+                }
+                break;
+            }
+        }
+        
+        if (fionneEntity == null) {
+           // System.out.println("[INTRO QUEST] Warning: Fionne not found during initialization");
+           // System.out.println("[INTRO QUEST] Indicator will be set on first interaction");
+        }
+    }
     /**
      * ★ Find and cache Fionne entity
      */
@@ -88,17 +134,19 @@ public class IntroQuestHandler {
                 // Check if sword equipped
                 if (isSwordEquipped()) {
                     advanceToStage2Complete(ui);
+                    /*
                     // ★ FIX: Return TRUE to prevent JSON dialogue from loading
                     // Stage is now STAGE_2_COMPLETE, next click will show Stage 3
                     ui.showDialogue(
                         npc.getNpcName(),
-                        "I see you've equipped the sword. Well done. Come, speak with me again."
+                        "I see you've equipped the sword. It will help you in your journey. Try to use it them speak with me again."
                     );
+                    */
                     return true;
                 } else {
                     showEquipSwordReminder(ui);
                     return true;
-                }
+                } 
                 
             case STAGE_2_COMPLETE:
             case STAGE_3_DIALOGUE:  // ★ HANDLE DECLINE - Stay on Stage 3
@@ -106,20 +154,23 @@ public class IntroQuestHandler {
                 return true;
                 
             case STAGE_3_COMPLETE:
-            case ALL_COMPLETE:
+            	 
+            case ALL_COMPLETE:/*
                 // Intro quests done, show generic dialogue
                 ui.showDialogue(
                     npc.getNpcName(),
                     "I have given you all the aid I can. May your journey be swift and safe."
-                );
-                return true;
+                );*/
+                //return true;
+                return false; //go straight to collect recipe for run crafting
                 
             default:
                 return false; // Let dialogue system handle
         }
     }
     
-    /**
+
+	/**
      * STAGE 1: First meeting with Fionne
      * Grants inventory and wooden sword
      */
@@ -128,6 +179,7 @@ public class IntroQuestHandler {
         
         // ★ Set stage IMMEDIATELY so declining keeps player in this stage
         currentStage = IntroStage.STAGE_1_DIALOGUE;
+        
         
         dialogueBox.showMessageWithAccept(
             "To return to the continent, you must craft a magical rune. For that, you'll need the proper recipes and materials. Take this. A gift from the Divine Elves.",
@@ -149,7 +201,7 @@ public class IntroQuestHandler {
                 dialogueBox.setVisible(false);
                 System.out.println("[INTRO QUEST] Player declined Stage 1 - will retry on next interaction");
             }
-        );
+        ); 
     }
     
     /**
@@ -164,7 +216,7 @@ public class IntroQuestHandler {
         ui.addItemToInventory(sword);
         
         // Add test gear items for demonstration
-        ui.addTestGearItems();
+       // ui.addTestGearItems();
         
         // Advance stage
         currentStage = IntroStage.STAGE_1_COMPLETE;
@@ -211,7 +263,9 @@ public class IntroQuestHandler {
         currentStage = IntroStage.STAGE_3_DIALOGUE;
         
         dialogueBox.showMessageWithAccept(
-            "To craft the rune, gather: Carved Wood, Clay, Carving Stone\nThese can be found by hunting the creatures roaming this island.\nBut be cautious. Some creatures will attack without hesitation.\nIf you fall, your journey ends here.",
+            //"To craft the rune, gather: Carved Wood, Clay, Carving Stone\nThese can be found by hunting the creatures roaming this island.\nBut be cautious. Some creatures will attack without hesitation.\nIf you fall, your journey ends here.",
+            "The wooden sword you equipped will grant you strength to protect yourself from evil elements \nIt is not the best weapon but its durability will be enough for your journey.",
+            
             () -> {
                 dialogueBox.showMessageWithAccept(
                     "Fionne raises her staff. A soft aura surrounds you.",
@@ -220,9 +274,16 @@ public class IntroQuestHandler {
                             "This enchantment will help you survive the first trials. And take this as well.",
                             () -> {
                                 dialogueBox.showMessageWithAccept(
-                                    "Item obtained: Rune of Return",
-                                    () -> completeStage3(ui),
+                                    "Quest Unlocked!", 
+                                    () -> {
+                                    	dialogueBox.showMessageWithAccept(
+                                    	"Item obtained: Rune of Return",
+                                    	() -> completeStage3(ui),
+                                    	() -> dialogueBox.setVisible(false)
+                                    	);
+                                    },
                                     () -> dialogueBox.setVisible(false)
+                                    
                                 );
                             },
                             () -> dialogueBox.setVisible(false)
@@ -237,15 +298,16 @@ public class IntroQuestHandler {
                 System.out.println("[INTRO QUEST] Player declined Stage 3 - will retry on next interaction");
             }
         );
-    }
-    
+    }   
     /**
      * Complete Stage 3: Grant rune and blessing
      */
     private void completeStage3(UIManager ui) {
         // Add Rune of Return to inventory
         ui.addItemToInventory(ItemManager.createRuneOfReturn());
+        ui.unlockQuestButton("quest");
         
+        //Quest quest = new Quest("");
         // Grant Fionne's Blessing buff
         BuffManager buffManager = player.getComponent(BuffManager.class);
         if (buffManager != null) {
@@ -258,6 +320,7 @@ public class IntroQuestHandler {
         ui.notifyInventoryUpdate();
         
         currentStage = IntroStage.STAGE_3_COMPLETE;
+        
         updateQuestIndicator();  // ★ Update indicator (hide or show completion)
         
         System.out.println("[INTRO QUEST] Stage 3 Complete: Rune received, blessing granted");
@@ -266,77 +329,133 @@ public class IntroQuestHandler {
         ui.getDialogueBox().setVisible(false);
         
         // Mark all intro quests complete
-        markAllComplete();
+        //markAllComplete(); //TODO: watch this!
     }
-    
+    /*
+     * Stage 4 unlock quest menu
+     * 
+     */ 
+    private void showStage4Dialogue(UIManager ui) {
+    	
+	UIDialogueBox dialogueBox = ui.getDialogueBox();
+	        
+	        // ★ Set stage IMMEDIATELY so declining keeps player in this stage
+	        currentStage = IntroStage.STAGE_4_DIALOGUE;
+	        /*
+	        dialogueBox.showMessageWithAccept(
+	            "To craft the rune, gather: Carved Wood, Clay, Carving Stone\nThese can be found by hunting the creatures roaming this island.\nBut be cautious. Some creatures will attack without hesitation.\nIf you fall, your journey ends here.",
+	            () -> {
+	                dialogueBox.showMessageWithAccept(
+	                    "Fionne raises her staff. A soft aura surrounds you.",
+	                    () -> {
+	                        dialogueBox.showMessageWithAccept(
+	                            "This enchantment will help you survive the first trials. And take this as well.",
+	                            () -> {
+	                                dialogueBox.showMessageWithAccept(
+	                                    "Item obtained: Rune of Return",
+	                                    () -> completeStage3(ui),
+	                                    () -> dialogueBox.setVisible(false)
+	                                );
+	                            },
+	                            () -> dialogueBox.setVisible(false)
+	                        );
+	                    },
+	                    () -> dialogueBox.setVisible(false)
+	                );
+	            },
+	            () -> {
+	                // ★ On decline, stay in STAGE_3_DIALOGUE (already set above)
+	                dialogueBox.setVisible(false);
+	                System.out.println("[INTRO QUEST] Player declined Stage 3 - will retry on next interaction");
+	            }
+	        );
+			*/
+	}
     /**
      * Mark all intro quests as complete
      */
     private void markAllComplete() {
         currentStage = IntroStage.ALL_COMPLETE;
         updateQuestIndicator();  // ★ Hide indicator
-        System.out.println("[INTRO QUEST] All introduction quests complete!");
+      //  System.out.println("[INTRO QUEST] All introduction quests complete!");
     }
-    
     /**
-     * ★ NEW: Update quest indicator based on current stage
+     * ★ REFACTORED: Update quest indicator based on current stage
      */
     private void updateQuestIndicator() {
         cacheFionneEntity();  // Ensure we have Fionne
         
         if (fionneEntity == null) {
-            System.err.println("[INTRO QUEST] Warning: Cannot update indicator - Fionne entity not found");
+           // System.err.println("[INTRO QUEST] Warning: Cannot update indicator - Fionne entity not found");
             return;
         }
         
         QuestIndicator indicator = fionneEntity.getComponent(QuestIndicator.class);
         if (indicator == null) {
-            System.err.println("[INTRO QUEST] Warning: Fionne has no QuestIndicator component");
+           // System.err.println("[INTRO QUEST] Warning: Fionne has no QuestIndicator component");
             return;
         }
         
-     // ★ DEBUG: Log before changing
-        System.out.println("[INTRO QUEST] Current stage: " + currentStage);
-        System.out.println("[INTRO QUEST] Indicator before: active=" + indicator.active + 
-                           ", type=" + indicator.type);
+        // ★ DEBUG: Log state change
+        //System.out.println("[INTRO QUEST] Updating indicator for stage: " + currentStage);
+        //System.out.println("[INTRO QUEST] Before update - active=" + indicator.active + 
+         //                  ", type=" + indicator.type);
         
         switch (currentStage) {
             case NOT_STARTED:
             case STAGE_1_DIALOGUE:
                 // Quest available
                 indicator.show(IndicatorType.AVAILABLE);
-                System.out.println("[INTRO QUEST] Indicator: ! (Quest Available)");
+               // System.out.println("[INTRO QUEST] Set indicator: ! (Quest Available)");
                 break;
                 
             case STAGE_1_COMPLETE:
                 // In progress (waiting for sword equip)
                 indicator.show(IndicatorType.IN_PROGRESS);
-                System.out.println("[INTRO QUEST] Indicator: ... (Equip Sword)");
+               // System.out.println("[INTRO QUEST] Set indicator: ... (Equip Sword)");
                 break;
                 
             case STAGE_2_COMPLETE:
             case STAGE_3_DIALOGUE:
                 // Next quest available
                 indicator.show(IndicatorType.AVAILABLE);
-                System.out.println("[INTRO QUEST] Indicator: ! (Next Quest Available)");
+               //System.out.println("[INTRO QUEST] Set indicator: ! (Next Quest Available)");
                 break;
                 
             case STAGE_3_COMPLETE:
             case ALL_COMPLETE:
                 // All done, hide indicator
-                indicator.hide();
-                System.out.println("[INTRO QUEST] Indicator: Hidden (All Complete)");
+                //indicator.hide();
+                indicator.show(IndicatorType.IN_PROGRESS);
+                //System.out.println("[INTRO QUEST] Set indicator: Hidden (All Complete)");
                 break;
                 
             default:
-                indicator.hide();
+                //indicator.hide();
+            	indicator.show(IndicatorType.COMPLETE);
+                //System.out.println("[INTRO QUEST] Set indicator: Hidden (Default)");
                 break;
         }
         
-     // ★ DEBUG: Log after changing
-        System.out.println("[INTRO QUEST] Indicator after: active=" + indicator.active + 
-                           ", type=" + indicator.type);
+        // ★ DEBUG: Verify change
+        //System.out.println("[INTRO QUEST] After update - active=" + indicator.active + 
+         //                  ", type=" + indicator.type);
     }
+    /**
+     * ★ UPDATED: Check and update sword equip status
+     * Call this method whenever equipment changes
+     */
+    public void checkSwordEquipStatus() {
+        if (currentStage == IntroStage.STAGE_1_COMPLETE) {
+            if (isSwordEquipped()) {
+                // ★ Sword equipped! Show message immediately
+                UIManager ui = gameState.getUIManager();
+                advanceToStage2Complete(ui);
+                
+                //System.out.println("[INTRO QUEST] Sword equipped detected - advancing to Stage 2 Complete");
+            }
+        }
+    } 
     
     /**
      * Check if wooden sword is equipped
@@ -488,7 +607,7 @@ public class IntroQuestHandler {
     public void forceSetStage(IntroStage stage) {
         currentStage = stage;
         updateQuestIndicator();  // ★ Update indicator when forcing stage
-        System.out.println("[INTRO QUEST DEBUG] Force set stage to: " + stage);
+        //System.out.println("[INTRO QUEST DEBUG] Force set stage to: " + stage);
     }
     
     /**
@@ -497,6 +616,6 @@ public class IntroQuestHandler {
     public void resetIntroQuests() {
         currentStage = IntroStage.NOT_STARTED;
         updateQuestIndicator();  // ★ Reset indicator
-        System.out.println("[INTRO QUEST DEBUG] Reset to beginning");
+        //System.out.println("[INTRO QUEST DEBUG] Reset to beginning");
     }
 }

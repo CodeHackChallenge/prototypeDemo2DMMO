@@ -390,15 +390,15 @@ public class UIInventorySlot extends UIComponent {
 	     }
 	     return true;
  	}
- 
+    //debug items
     public void setItem(Item item) {
         this.item = item;
         this.stackCount = (item != null) ? 1 : 0;
         
         // ★ DEBUG: Print when item is set
         if (item != null) {
-            System.out.println("📦 Item set in slot " + slotIndex + ": " + item.getName());
-            System.out.println("   Icon path: " + item.getIconPath());
+            //System.out.println("📦 Item set in slot " + slotIndex + ": " + item.getName());
+           // System.out.println("   Icon path: " + item.getIconPath());
         }
     }
     

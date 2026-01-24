@@ -27,6 +27,7 @@ import dev.main.input.MouseInput;
 import dev.main.input.Position;
 import dev.main.item.ItemManager;
 import dev.main.quest.IntroQuestHandler;
+import dev.main.quest.QuestIndicator;
 import dev.main.render.Renderer;
 import dev.main.state.GameLogic;
 import dev.main.state.GameState;
@@ -39,6 +40,9 @@ import dev.main.util.DamageText;
 
 public class Engine extends Canvas implements Runnable, KeyListener {
 
+	public boolean rendererDebugMode = false;  // Add this field to Engine class
+
+	
     //constants
     public static final int Eclipse = 0;
     public static final int VSCode = 1;
@@ -362,6 +366,18 @@ public class Engine extends Canvas implements Runnable, KeyListener {
     
     @Override
     public void keyPressed(KeyEvent e) {
+    	// In keyPressed():
+    	/*if (e.getKeyCode() == KeyEvent.VK_R) {
+    	    rendererDebugMode = !rendererDebugMode;
+    	    System.out.println("Renderer debug mode: " + (rendererDebugMode ? "ON" : "OFF"));
+    	    
+    	    if (rendererDebugMode) {
+    	        System.out.println("\nRenderer will now print indicator state EVERY FRAME.");
+    	        System.out.println("Watch the console to see what the renderer is reading.");
+    	        System.out.println("Press 'R' again to turn off.\n");
+    	    }
+    	}
+    	*/
         if (e.getKeyCode() == KeyEvent.VK_SHIFT) {
             shiftPressed = true;
         }
@@ -404,132 +420,7 @@ public class Engine extends Canvas implements Runnable, KeyListener {
             System.out.println("║   X - Add XP                         ║");
             System.out.println("║   S - Show stats                     ║");
             System.out.println("╚═══════════════════════════════════════╝\n");
-        }
-        
-        // ★ NEW: Debug intro quest controls
-        // Advance intro quest (press N for "Next stage")
-        if (e.getKeyCode() == KeyEvent.VK_N) {
-            IntroQuestHandler ih = gameState.getIntroQuestHandler();
-            if (ih != null) {
-                IntroQuestHandler.IntroStage current = ih.getCurrentStage();
-                IntroQuestHandler.IntroStage[] stages = IntroQuestHandler.IntroStage.values();
-                
-                int nextIndex = (current.ordinal() + 1) % stages.length;
-                ih.forceSetStage(stages[nextIndex]);
-                
-                System.out.println("DEBUG: Advanced intro quest to " + stages[nextIndex]);
-            }
-        }
-        
-        // Reset intro quest (press M for "reset Main quest")
-        if (e.getKeyCode() == KeyEvent.VK_M) {
-            IntroQuestHandler ih = gameState.getIntroQuestHandler();
-            if (ih != null) {
-                ih.resetIntroQuests();
-            }
-        }
-        
-        // Test unlocking menu buttons (press U)
-        if (e.getKeyCode() == KeyEvent.VK_U) {
-            String[] buttonIds = {"settings", "crafting", "quest", "skilltree", "stats", "character", "trade", "message", "world"};
-            boolean unlocked = false;  
-            
-            for (String id : buttonIds) {
-                UIButton button = gameState.getUIManager().getMenuButton(id);
-                if (button != null && button.isLocked()) {
-                    gameState.getUIManager().unlockMenuButton(id);
-                    unlocked = true;
-                    break;
-                }
-            }
-            
-            if (!unlocked) {
-                System.out.println("DEBUG: All menu buttons already unlocked!");
-            }
-        }
-        
-        // Lock all buttons again (press L)
-        if (e.getKeyCode() == KeyEvent.VK_L) {
-            String[] buttonIds = {"settings", "crafting", "quest", "skilltree", "stats", "character", "trade", "message", "world"};
-            
-            for (String id : buttonIds) {
-                gameState.getUIManager().lockMenuButton(id);
-            }
-            
-            System.out.println("DEBUG: Locked all menu buttons except Inventory");
-        }
-        
-        // Add test item to inventory (press G for "Get item")
-        if (e.getKeyCode() == KeyEvent.VK_G) {
-            boolean added = gameState.getUIManager().addItemToInventory(ItemManager.createWoodenShortSword());
-            if (added) {
-                System.out.println("DEBUG: Added test item to inventory");
-            } else {
-                System.out.println("DEBUG: Inventory is full!");
-            }
-        }
-        
-        // Clear all items from inventory (press C for "Clear")
-        if (e.getKeyCode() == KeyEvent.VK_C) {
-            // Implementation omitted for brevity - same as before
-        }
-        
-        // Debug: Damage player (press D)
-        if (e.getKeyCode() == KeyEvent.VK_D) {
-            Entity player = gameState.getPlayer();
-            Stats stats = player.getComponent(Stats.class);
-            if (stats != null) {
-                stats.hp -= 10;
-                if (stats.hp < 0) stats.hp = 0;
-                System.out.println("HP: " + stats.hp + "/" + stats.maxHp);
-            }
-        }
-        
-        // Full heal command (press F)
-        if (e.getKeyCode() == KeyEvent.VK_F) {
-            Entity player = gameState.getPlayer();
-            Stats stats = player.getComponent(Stats.class);
-            Position pos = player.getComponent(Position.class);
-            
-            if (stats != null) {
-                stats.fullHeal();
-                System.out.println("DEBUG: Full heal!");
-                
-                if (pos != null) {
-                    DamageText healText = new DamageText("HEALED!", DamageText.Type.HEAL, pos.x, pos.y - 30);
-                    gameState.addDamageText(healText);
-                }
-            }
-        }
-        
-        // Add XP for testing (press X)
-        if (e.getKeyCode() == KeyEvent.VK_X) {
-            Entity player = gameState.getPlayer();
-            Experience exp = player.getComponent(Experience.class);
-            Stats stats = player.getComponent(Stats.class);
-            
-            if (exp != null && stats != null) {
-                int xpGain = 100;
-                System.out.println("DEBUG: Adding " + xpGain + " XP");
-                
-                int levelsGained = exp.addExperience(xpGain);
-                
-                if (levelsGained > 0) {
-                    stats.applyLevelStats(exp, true);
-                    
-                    LevelUpEffect levelUpEffect = player.getComponent(LevelUpEffect.class);
-                    if (levelUpEffect != null) {
-                        levelUpEffect.trigger(exp.level);
-                    }
-                    
-                    Position pos = player.getComponent(Position.class);
-                    if (pos != null) {
-                        DamageText levelText = new DamageText("LEVEL UP! " + exp.level, DamageText.Type.HEAL, pos.x, pos.y - 40);
-                        gameState.addDamageText(levelText);
-                    }
-                }
-            }
-        }
+        }   
     }
     
     @Override
@@ -604,6 +495,7 @@ public class Engine extends Canvas implements Runnable, KeyListener {
 
             if (System.currentTimeMillis() - timer >= 1000) {
                 timer += 1000;
+                //System.out.println("FPS: " + frames + " | UPS: " + updates);
                 frames = 0;
                 updates = 0;
             }
@@ -635,7 +527,13 @@ public class Engine extends Canvas implements Runnable, KeyListener {
     public MouseInput getMouse() { return mouse; }
     public GameState getGameState() { return gameState; }
     public static Engine getInstance() { return instance; }
-    
+	 // ════════════════════════════════════════════════════════════════════════
+	 // Also add getter to Engine.java so Renderer can access the debug flag:
+	 // ════════════════════════════════════════════════════════════════════════
+
+	 public boolean isRendererDebugMode() {
+	     return rendererDebugMode;
+	 }
     public static void main(String[] args) {
         new Engine().start();
     }

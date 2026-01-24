@@ -6,10 +6,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
 import dev.main.Engine;
 import dev.main.input.CollisionBox;
 import dev.main.sprite.TextureManager;
+import dev.main.util.JsonMapParser;
+import dev.main.util.MapData;
 
 public class TileMap {
     
@@ -24,11 +28,39 @@ public class TileMap {
     // Collision data
     private int[][] collisionMap;  // NEW: 0 = walkable, 1 = solid
     
+    private MapData mapData;
+    
     public TileMap(String mapImagePath, String collisionMapPath) {
         loadMapImage(mapImagePath);
         loadCollisionMap(collisionMapPath);
     }
     
+    public TileMap(String jsonMapPath) {
+        MapData data = JsonMapParser.parse(jsonMapPath);
+        
+        if (data != null) {
+            this.width = data.width;
+            this.height = data.height;
+            this.collisionMap = data.tiles;
+            
+            System.out.println("JSON map loaded: " + data.mapId);
+            System.out.println("  Size: " + width + "x" + height + " tiles");
+            System.out.println("  Portals: " + data.portals.size());
+            System.out.println("  Spawns: " + data.monsterSpawns.size());
+            
+            // Store for later use
+            storeMapData(data);
+            
+            // Load map image based on mapId
+            String imagePath = "/maps/" + data.mapId + ".png";
+            loadMapImage(imagePath);
+        } else {
+            System.err.println("Failed to load JSON map, using defaults");
+            width = 50;
+            height = 50;
+            createEmptyCollisionMap();
+        }
+    }
     /**
      * Load the full map image
      */
@@ -131,12 +163,25 @@ public class TileMap {
         );
     }
     
-    /**
-     * Check if a tile is solid (1 = solid, 0 = walkable)
-     */
     public boolean isSolid(int tileX, int tileY) {
         // Out of bounds = solid
         if (tileX < 0 || tileX >= width || tileY < 0 || tileY >= height) {
+            return true;
+        }
+        
+        // ★ NEW: Extra safety check for collision map bounds
+        if (collisionMap == null) {
+            System.err.println("⚠ Collision map is null!");
+            return true;
+        }
+        
+        if (tileY >= collisionMap.length) {
+            System.err.println("⚠ Row " + tileY + " exceeds collision map height " + collisionMap.length);
+            return true;
+        }
+        
+        if (tileX >= collisionMap[tileY].length) {
+            System.err.println("⚠ Col " + tileX + " exceeds collision map width " + collisionMap[tileY].length);
             return true;
         }
         
@@ -173,6 +218,23 @@ public class TileMap {
         }
         
         return false;
+    }
+    
+    private void storeMapData(MapData data) {
+        this.mapData = data;
+    }
+
+    // ★ ADD GETTERS for accessing map data
+    public MapData getMapData() {
+        return mapData;
+    }
+    
+    public List<MapData.Portal> getPortals() {
+        return mapData != null ? mapData.portals : new ArrayList<>();
+    }
+
+    public List<MapData.MonsterSpawn> getMonsterSpawns() {
+        return mapData != null ? mapData.monsterSpawns : new ArrayList<>();
     }
     
     public int getWidth() { 

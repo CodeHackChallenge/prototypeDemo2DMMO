@@ -175,62 +175,68 @@ public class UIQuestPanel extends UIComponent {
     
     private void abandonSelectedQuest() {
         if (selectedQuest == null) return;
-
+ 
         Quest questToAbandon = selectedQuest.quest;
         GameState gs = gameState;
         UIManager ui = gs.getUIManager();
-
+        
         // Show confirmation dialog
         if (ui != null) {
-            ui.showConfirmation("Confirm Abandon",
-                "You will lose any progress you have",
-                "Continue",
-                "Cancel",
-                () -> {
-                    // On confirm: remove from player's quest log, reset quest, update NPC indicator
-                    QuestLog questLog = player.getComponent(QuestLog.class);
-                    if (questLog != null) {
-                        questLog.removeQuest(questToAbandon.getId());
-                    }
+        	if(questToAbandon.getQuestType() == Quest.QUEST_MAIN) {  
+       		 	ui.showDialogue("NOTICE", "Main Quest can't be abandoned");   
+       		 	return;
+        	}
+        	else {
+        		ui.showConfirmation("Confirm Abandon",
+                        "You will lose any progress you have",
+                        "Continue",
+                        "Cancel",
+                        () -> {
+                            // On confirm: remove from player's quest log, reset quest, update NPC indicator
+                            QuestLog questLog = player.getComponent(QuestLog.class);
+                            if (questLog != null) {   
+                            	questLog.removeQuest(questToAbandon.getId()); 
+                            } 
+                            // Reset quest state so NPC can offer again
+                            questToAbandon.reset();
 
-                    // Reset quest state so NPC can offer again
-                    questToAbandon.reset();
-
-                    // Find NPC and clear any current offered reference
-                    String giverId = questToAbandon.getQuestGiver();
-                    if (giverId != null) {
-                        for (Entity e : gs.getEntities()) {
-                            NPC npc = e.getComponent(NPC.class);
-                            if (npc != null && giverId.equals(npc.getNpcId())) {
-                                // Ensure current offered quest cleared
-                                if (npc.getCurrentOfferedQuest() == questToAbandon) {
-                                    npc.setCurrentOfferedQuest(null);
+                            // Find NPC and clear any current offered reference
+                            String giverId = questToAbandon.getQuestGiver();
+                            if (giverId != null) {
+                                for (Entity e : gs.getEntities()) {
+                                    NPC npc = e.getComponent(NPC.class);
+                                    if (npc != null && giverId.equals(npc.getNpcId())) {
+                                        // Ensure current offered quest cleared
+                                        if (npc.getCurrentOfferedQuest() == questToAbandon) {
+                                            npc.setCurrentOfferedQuest(null);
+                                        }
+                                        break;
+                                    }
                                 }
-                                break;
                             }
+
+                            System.out.println("Quest abandoned: " + questToAbandon.getName());
+
+                            selectedQuest = null;
+                            if (abandonButton != null) abandonButton.setVisible(false);
+                            refreshQuestList();
+
+                            // Update quest indicators in UI
+                            if (ui != null) ui.updateQuestIndicator();
+                        },
+                        () -> {
+                            // Cancel - do nothing
                         }
-                    }
-
-                    System.out.println("Quest abandoned: " + questToAbandon.getName());
-
-                    selectedQuest = null;
-                    if (abandonButton != null) abandonButton.setVisible(false);
-                    refreshQuestList();
-
-                    // Update quest indicators in UI
-                    if (ui != null) ui.updateQuestIndicator();
-                },
-                () -> {
-                    // Cancel - do nothing
-                }
-            );
+                    );
+        	}
+            
         }
     }
     
     @Override
     public void render(Graphics2D g) {
         if (!visible) return;
-        
+     
         // Refresh quest list each frame (in case quests updated)
         refreshQuestList();
         
@@ -392,7 +398,7 @@ public class UIQuestPanel extends UIComponent {
         currentY += 10;
         
         // Rewards
-        if (quest.getExpReward() > 0 || quest.getGoldReward() > 0 || !quest.getItemRewards().isEmpty()) {
+        if (quest.getExpReward() > 0 || quest.getAurelReward() > 0 || !quest.getItemRewards().isEmpty()) {
             g.setColor(new Color(180, 180, 180));
             g.drawString("Rewards:", detailX + 8, currentY);
             currentY += 18;
@@ -404,8 +410,8 @@ public class UIQuestPanel extends UIComponent {
                 currentY += 16;
             }
             
-            if (quest.getGoldReward() > 0) {
-                g.drawString("• " + quest.getGoldReward() + " Gold", detailX + 16, currentY);
+            if (quest.getAurelReward() > 0) {
+                g.drawString("• " + quest.getAurelReward() + " Aurel", detailX + 16, currentY);
                 currentY += 16;
             }
             
