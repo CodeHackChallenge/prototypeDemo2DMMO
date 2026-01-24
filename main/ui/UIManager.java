@@ -14,6 +14,7 @@ import dev.main.entity.Entity;
 import dev.main.entity.Experience;
 import dev.main.item.Item;
 import dev.main.item.ItemManager;
+import dev.main.quest.IntroQuestHandler;
 import dev.main.quest.QuestLog;
 import dev.main.skill.Skill;
 import dev.main.skill.SkillLevel;
@@ -56,7 +57,7 @@ public class UIManager implements MouseWheelListener {
     
     //buff
     private UIBuffBar buffBar;
-    
+    /*
     // Quest flags
     private boolean fionneSecondQuestAvailable = false;
     private String fionneNotification = null;
@@ -65,9 +66,9 @@ public class UIManager implements MouseWheelListener {
     private boolean introQuestCompleted = false;
     private boolean swordEquipped = false;
     
-    public boolean isFionneSecondQuestAvailable() {
-        return fionneSecondQuestAvailable && swordEquipped;
-    }
+//    public boolean isFionneSecondQuestAvailable() {
+//        return fionneSecondQuestAvailable && swordEquipped;
+//    }
 
     public boolean isIntroQuestCompleted() {
         return introQuestCompleted;
@@ -76,7 +77,7 @@ public class UIManager implements MouseWheelListener {
     public boolean hasSwordButNotEquipped() {
         return hasWoodenSwordInInventory() && !isWoodenSwordEquipped();
     }
-
+*/
     
     public UIManager(GameState gameState) {
         this.gameState = gameState;
@@ -183,102 +184,7 @@ public class UIManager implements MouseWheelListener {
     public void showConfirmation(String title, String message, String confirmLabel, String cancelLabel,
                                  Runnable onConfirm, Runnable onCancel) {
         dialogueBox.showConfirmation(title, message, confirmLabel, cancelLabel, onConfirm, onCancel);
-    }
-
-    /**
-     * ★ MODIFIED: Show intro dialogue (unlocks inventory with NEW badge)
-     */
-    // 2. UPDATE showIntroDialogue() method to mark quest as completed:
-    public void showIntroDialogue() {
-        dialogueBox.showMessageWithAccept(
-            "To return to the continent, you must craft a magical rune. For that, you'll need the proper recipes and materials. Take this. A gift from the Divine Elves.",
-            () -> {
-                dialogueBox.showMessageWithAccept(
-                    "She hands you a shimmering pouch.",
-                    () -> {
-                        dialogueBox.showMessageWithAccept(
-                            "Inventory Unlocked",
-                            () -> {
-                                // Unlock inventory (shows NEW badge automatically)
-                                unlockMenuButton("inventory");
-                                
-                                // Add item and show notification
-                                Item sword = ItemManager.createWoodenShortSword();
-                                addItemToInventory(sword);
-                                
-                                // ★ MARK INTRO QUEST AS COMPLETED
-                                introQuestCompleted = true;
-                                
-                                System.out.println("Intro quest completed! Inventory unlocked with NEW badge.");
-                                dialogueBox.setVisible(false);
-                                //test item
-                                addTestGearItems();
-                            },
-                            () -> { dialogueBox.setVisible(false); }
-                        );
-                    },
-                    () -> { dialogueBox.setVisible(false); }
-                );
-            },
-            () -> {
-                dialogueBox.setVisible(false);
-            }
-        );
-    }
-    
-    /**
-     * Show second quest dialogue from Fionne
-     * FIXED: Updated to use new notification system
-     */
-    public void showSecondQuestDialogue() {
-        fionneNotification = "...";  // Change notification to in-progress
-        dialogueBox.showMessageWithAccept(
-            "To craft the rune, gather: Carved Wood, Clay, Carving Stone\nThese can be found by hunting the creatures roaming this island.\nBut be cautious. Some creatures will attack without hesitation.\nIf you fall, your journey ends here.",
-            () -> {
-                // Next: aura message
-                dialogueBox.showMessageWithAccept(
-                    "Fionne raises her staff. A soft aura surrounds you.",
-                    () -> {
-                        // Next: enchantment message
-                        dialogueBox.showMessageWithAccept(
-                            "This enchantment will help you survive the first trials. And take this as well.",
-                            () -> {
-                                // Final: item obtained
-                                dialogueBox.showMessageWithAccept(
-                                    "Item obtained: Rune of Return",
-                                    () -> {
-                                        // Add the rune to inventory
-                                        addItemToInventory(ItemManager.createRuneOfReturn());
-                                        
-                                        // ★ NEW: Grant Fionne's Blessing buff
-                                        Entity player = gameState.getPlayer();
-                                        BuffManager buffManager = player.getComponent(BuffManager.class);
-                                        if (buffManager != null) {
-                                            Buff blessing = BuffFactory.createFionnesBlessing();
-                                            buffManager.addBuff(blessing);
-                                            System.out.println("Fionne's Blessing activated! +20% EXP for 20,000 kills");
-                                        }
-                                        
-                                        // ★ FIXED: Use new notification system
-                                        notifyInventoryUpdate();
-                                        
-                                        secondQuestCompleted = true;
-                                        fionneNotification = null;  // Remove notification
-                                        System.out.println("Second quest completed! Rune of Return obtained.");
-                                        dialogueBox.setVisible(false);
-                                    },
-                                    () -> { dialogueBox.setVisible(false); }
-                                );
-                            },
-                            () -> { dialogueBox.setVisible(false); }
-                        );
-                    },
-                    () -> { dialogueBox.setVisible(false); }
-                );
-            },
-            () -> { dialogueBox.setVisible(false); }
-        );
-    }
+    } 
     /**
      * ★ NEW: Notify level up - show alert on stats button
      */
@@ -339,7 +245,8 @@ public class UIManager implements MouseWheelListener {
             }
             
             // ⭐ NEW: Unlock quest button on first quest
-            unlockQuestButton();
+            //unlockQuestButton();
+            unlockQuestButton("quest");
             
             // ⭐ NEW: Update quest indicator
             updateQuestIndicator();
@@ -583,7 +490,7 @@ public class UIManager implements MouseWheelListener {
 
     /**
      * ★ MODIFIED: Unlock quest button when first quest is accepted
-     */
+     
     public void unlockQuestButton() {
         UIButton questButton = getMenuButton("quest");
         if (questButton != null && questButton.isLocked()) {
@@ -598,7 +505,7 @@ public class UIManager implements MouseWheelListener {
             System.out.println("Quest button unlocked with NEW badge!");
         }
     }
-
+*/
     /**
      * ★ MODIFIED: Update quest indicator
      */
@@ -718,7 +625,7 @@ public class UIManager implements MouseWheelListener {
         // CENTER HERO PREVIEW
         int heroX = leftGearX + columnWidth + gap;
         int heroY = currentY;
-        
+         
         heroPreviewPanel = new UIPanel(heroX, heroY, heroWidth, heroPreviewHeight);
         heroPreviewPanel.setBackgroundColor(new java.awt.Color(30, 30, 40, 180));
         heroPreviewPanel.setBorderColor(new java.awt.Color(80, 80, 100));
@@ -735,7 +642,7 @@ public class UIManager implements MouseWheelListener {
         addGearSlotToContainer(rightGearX, rightGearY + (slotSize + gap) * 3, columnWidth, slotSize, UIGearSlot.SlotType.RING_1);
         addGearSlotToContainer(rightGearX, rightGearY + (slotSize + gap) * 4, columnWidth, slotSize, UIGearSlot.SlotType.RING_2);
         addGearSlotToContainer(rightGearX, rightGearY + (slotSize + gap) * 5, columnWidth, slotSize, UIGearSlot.SlotType.SPECIAL);
-        
+       
         
         // Move to next section (tabs)
         currentY += gearColumnHeight + padding;
@@ -899,16 +806,16 @@ public class UIManager implements MouseWheelListener {
         }
         
         // Render hovered entity name
-        renderHoveredEntityName(g);
+        //renderHoveredEntityName(g);
     }
-    
+    /*
     private void renderHoveredEntityName(Graphics2D g) {
         // Don't show hover names if dialogue is open
         if ((dialogueBox != null && dialogueBox.isVisible()) || 
             (enhancedDialogueBox != null && enhancedDialogueBox.isVisible())) {
             return;
         }
-        /*
+     
         // Show names for all NPCs
         for (Entity entity : gameState.getEntities()) {
             if (entity.getType() == EntityType.NPC) {
@@ -929,9 +836,8 @@ public class UIManager implements MouseWheelListener {
                     }
                 }
             }
-        }*/
-    }
-    
+        }
+    }*/
     // Updated to accept pressed state for drag handling
     public void handleMouseMove(int mouseX, int mouseY, boolean pressed) {
         for (UIPanel panel : panels) {
@@ -1278,6 +1184,17 @@ public class UIManager implements MouseWheelListener {
         }
     }
     
+    public void unlockQuestButton(String id) {
+    	UIButton button = getMenuButton(id);
+    	if (button != null && button.isLocked()) {
+            button.unlock();  // Now shows "NEW!" badge automatically
+            if (verticalMenu != null) {
+                verticalMenu.relayout(); //Does this need to be called?
+            }
+            System.out.println("Unlocked: " + button.getLabel() + " (NEW badge shown)");
+        }
+    }
+    
     public void lockMenuButton(String id) {
         UIButton button = getMenuButton(id);
         if (button != null) {
@@ -1358,9 +1275,8 @@ public class UIManager implements MouseWheelListener {
         }
         return null;
     }
-    
     /**
-     * ★ MODIFIED: Equip item (shows notification on stats button if needed)
+     * ★ UPDATED: Equip item and notify quest handler
      */
     public boolean equipItem(UIGearSlot.SlotType slotType, Item item) {
         UIGearSlot slot = getGearSlot(slotType);
@@ -1377,10 +1293,17 @@ public class UIManager implements MouseWheelListener {
             
             // ★ TRACK WHEN WOODEN SHORT SWORD IS EQUIPPED
             if (slotType == UIGearSlot.SlotType.WEAPON && "Wooden Short Sword".equals(item.getName())) {
-                swordEquipped = true;
+                //swordEquipped = true;
                 unlockMenuButton("stats");  // Shows NEW badge automatically
-                fionneSecondQuestAvailable = true;
-                fionneNotification = "!";
+                //fionneSecondQuestAvailable = true;
+               // fionneNotification = "!";
+                
+                // ★ NEW: Notify intro quest handler
+                IntroQuestHandler introHandler = gameState.getIntroQuestHandler();
+                if (introHandler != null) {
+                    introHandler.checkSwordEquipStatus();
+                }
+                
                 System.out.println("Stats button unlocked with NEW badge! Second quest available from Fionne.");
             }
         }
@@ -1606,40 +1529,40 @@ public class UIManager implements MouseWheelListener {
      // WEAPONS (Should go in Weapon slot)
      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      addItemToInventory(ItemManager.createWoodenShortSword());
-     System.out.println("✅ Added: Wooden Short Sword (COMMON)");
+     //System.out.println("✅ Added: Wooden Short Sword (COMMON)");
      
      addItemToInventory(ItemManager.createIronSword());
-     System.out.println("✅ Added: Iron Sword (COMMON)");
+     //System.out.println("✅ Added: Iron Sword (COMMON)");
      
      addItemToInventory(ItemManager.createSteelLongsword());
-     System.out.println("✅ Added: Steel Longsword (UNCOMMON)");
+     //System.out.println("✅ Added: Steel Longsword (UNCOMMON)");
      
      addItemToInventory(ItemManager.createMysticStaff());
-     System.out.println("✅ Added: Mystic Staff (RARE)");
+     //System.out.println("✅ Added: Mystic Staff (RARE)");
      
      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      // ARMOR (Should go in Armor slots)
      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      addItemToInventory(ItemManager.createLeatherArmor());
-     System.out.println("✅ Added: Leather Armor (COMMON)");
+     //System.out.println("✅ Added: Leather Armor (COMMON)");
      
      addItemToInventory(ItemManager.createChainmail());
-     System.out.println("✅ Added: Chainmail (UNCOMMON)");
+     //System.out.println("✅ Added: Chainmail (UNCOMMON)");
      
      addItemToInventory(ItemManager.createPlateArmor());
-     System.out.println("✅ Added: Plate Armor (RARE)");
+     //System.out.println("✅ Added: Plate Armor (RARE)");
      
      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      // ACCESSORIES (Should go in Accessory slots)
      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      addItemToInventory(ItemManager.createPowerRing());
-     System.out.println("✅ Added: Ring of Power (UNCOMMON)");
+     //System.out.println("✅ Added: Ring of Power (UNCOMMON)");
      
      addItemToInventory(ItemManager.createAmuletOfProtection());
-     System.out.println("✅ Added: Amulet of Protection (RARE)");
+     //System.out.println("✅ Added: Amulet of Protection (RARE)");
      
      addItemToInventory(ItemManager.createSpeedBoots());
-     System.out.println("✅ Added: Boots of Speed (UNCOMMON)");
+     //System.out.println("✅ Added: Boots of Speed (UNCOMMON)");
      
      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      // CONSUMABLES (Stackable items)
@@ -1659,13 +1582,13 @@ public class UIManager implements MouseWheelListener {
      for (int i = 0; i < 5; i++) {
          addItemToInventory(ItemManager.createCarvedWood());
      }
-     System.out.println("✅ Added: 5x Carved Wood (Should stack)");
+     //System.out.println("✅ Added: 5x Carved Wood (Should stack)");
      
      for (int i = 0; i < 3; i++) {
          addItemToInventory(ItemManager.createFireRune());
      }
-     System.out.println("✅ Added: 3x Fire Rune (Should stack)");
-     
+     //System.out.println("✅ Added: 3x Fire Rune (Should stack)");
+     /*
      System.out.println("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
      System.out.println("✅ TEST ITEMS ADDED SUCCESSFULLY!");
      System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -1682,6 +1605,7 @@ public class UIManager implements MouseWheelListener {
      System.out.println("- Stackable items show count (e.g., '5' for wood)");
      System.out.println("- Equipped items show in gear slots with icons");
      System.out.println("\n");
+     */
  }
 
  // ═══════════════════════════════════════════════════════════════════

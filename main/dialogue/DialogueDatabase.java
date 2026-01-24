@@ -3,6 +3,8 @@ package dev.main.dialogue;
 import java.io.*;
 import java.util.*;
 
+import dev.main.dialogue.DialogueNode;
+
 /**
  * Central database for all dialogue trees
  * Loads dialogues from JSON files and manages them

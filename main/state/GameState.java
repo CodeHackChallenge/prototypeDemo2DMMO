@@ -14,10 +14,12 @@ import dev.main.entity.NameTag;
 import dev.main.entity.Respawn;
 import dev.main.entity.SpawnPoint;
 import dev.main.pathfinder.Pathfinder;
+import dev.main.quest.IntroQuestHandler;  // ★ NEW IMPORT
 import dev.main.stats.Stats;
 import dev.main.tile.TileMap;
 import dev.main.ui.UIManager;
 import dev.main.util.DamageText;
+import dev.main.util.MapData;
 
 import java.util.Iterator;
 
@@ -38,6 +40,9 @@ public class GameState {
     // UI
     private UIManager uiManager;
     
+    // ★ NEW: Intro quest handler
+    private IntroQuestHandler introQuestHandler;
+    
     private float gameTime;
     private float cameraX;
     private float cameraY;
@@ -52,20 +57,30 @@ public class GameState {
         cameraX = 0f;
         cameraY = 0f;
         
-        // Load map
-        if(Engine.IDE == Engine.Eclipse)
-        	map = new TileMap("/maps/env_fionne_map.png", "/maps/fionnes_introMap01.txt");
-        else if(Engine.IDE == Engine.VSCode)
-        	map = new TileMap("resources/maps/env_fionne_map.png", "resources/maps/fionnes_introMap01.txt");
         
+        // ★ OPTION 1: Load from JSON
+        if(Engine.IDE == Engine.Eclipse) {
+            map = new TileMap("/maps/intro_map.json");
+        } else if(Engine.IDE == Engine.VSCode) {
+            map = new TileMap("resources/maps/intro_map.json");
+        }
+        /*
+        // ★ OPTION 2: Load map from .txt
+        if(Engine.IDE == Engine.Eclipse)
+        	map = new TileMap("/maps/intro_map.png", "/maps/fionnes_introMap01.txt");
+        else if(Engine.IDE == Engine.VSCode)
+        	map = new TileMap("resources/maps/intro_map.png", "resources/maps/fionnes_introMap01.txt");
+        */
         pathfinder = new Pathfinder(map);
         
         initializeWorld();
         
-        // ☆ Create UI Manager (GameLogic will be set later)
+        // Create UI Manager (GameLogic will be set later)
         uiManager = new UIManager(this);
-   
         
+        // ★ NEW: Initialize intro quest handler AFTER UIManager
+        introQuestHandler = new IntroQuestHandler(this);
+   
         //test items
         //uiManager.addTestGearItems();
         
@@ -74,21 +89,22 @@ public class GameState {
     }
    
     private void initializeDialogueSystem() {
-    	      DialogueDatabase db = DialogueDatabase.getInstance();
-    	      
-    	      // Load all dialogue files
-    	     db.loadAllDialogues("/dialogues/");
-    	      
-    	     // Create programmatic dialogues
-    	     DialogueExamples.createSimpleGreeting();
-    	     
-    	      // Map NPCs to their dialogues
-    	      db.mapNPCToDialogue("fionne", "fionne_intro");
-    	      
-    	      System.out.println("Dialogue system initialized");
-   }
+        DialogueDatabase db = DialogueDatabase.getInstance();
+        
+        // Load all dialogue files
+        db.loadAllDialogues("/dialogues/");
+        
+        // Create programmatic dialogues
+        DialogueExamples.createSimpleGreeting();
+        
+        // Map NPCs to their dialogues
+        db.mapNPCToDialogue("fionne", "fionne_intro");
+        
+        System.out.println("Dialogue system initialized");
+    }
+    
     /**
-     * ☆ NEW: Set game logic reference for UI Manager
+     * Set game logic reference for UI Manager
      * Call this from Engine after creating GameLogic
      */
     public void setGameLogic(GameLogic gameLogic) {
@@ -100,12 +116,17 @@ public class GameState {
         player = EntityFactory.createPlayer(8 * 64, 5 * 64);
         entities.add(player);
         
-        // ⭐ NEW: Create Fionne NPC
+        
+        // ★ Load spawns from map data
+        loadSpawnsFromMapData();
+         
+        // Create Fionne NPC
         Entity fionne = EntityFactory.createFionne(14 * 64 - 32, 6 * 64 - 31);
         entities.add(fionne);
         System.out.println("Fionne NPC created at (13, 5)");
-       
         
+        // ★ OR keep manual spawns (your choice)
+        /*
         float normalRespawn = 30f;
         float bossRespawn = 50f;
         
@@ -138,7 +159,7 @@ public class GameState {
         
         // ELITE goblin
         addSpawnPoint("Goblin", 14 * 64, 10 * 64, normalRespawn, 3, MobTier.ELITE);
-        /*
+       
         // NORMAL bunnies
         addSpawnPoint("Bunny", 20 * 64, 20 * 64, normalRespawn, 1, MobTier.NORMAL);
         addSpawnPoint("Bunny", 20 * 64, 21 * 64, normalRespawn, 2, MobTier.NORMAL);
@@ -153,12 +174,12 @@ public class GameState {
         addSpawnPoint("GoblinBoss", 13 * 64, 12 * 64, bossRespawn, 5, MobTier.MINIBOSS);
         addSpawnPoint("BunnyBoss", 22 * 64, 23 * 64, bossRespawn, 5, MobTier.MINIBOSS);
         addSpawnPoint("MinotaurBoss", 22 * 64, 21 * 64, bossRespawn, 7, MobTier.MINIBOSS);
-         */
+        
         // Initial spawn of all monsters
         for (SpawnPoint sp : spawnPoints) {
             spawnMonsterAtPoint(sp);
         }
-          
+          */ 
         //add boulder
         addBoulder(4 * 64 - 13,  3 * 64 - 18);
         // User-requested tree at tile (5,5)
@@ -175,26 +196,52 @@ public class GameState {
         
     } 
     
+    // ★ ADD THIS METHOD to load spawns from JSON
+    private void loadSpawnsFromMapData() {
+        MapData data = map.getMapData();
+        if (data == null || data.monsterSpawns == null) {
+            System.out.println("No spawn data in map JSON");
+            return;
+        }
+        
+        System.out.println("Loading " + data.monsterSpawns.size() + " spawn points from JSON...");
+        
+        for (MapData.MonsterSpawn spawn : data.monsterSpawns) {
+            // Convert tier string to enum
+            MobTier tier = MobTier.valueOf(spawn.tier.toUpperCase());
+            
+            addSpawnPoint(
+                spawn.monsterType,
+                spawn.x,
+                spawn.y,
+                spawn.respawnDelay,
+                spawn.level,
+                tier
+            );
+            
+            System.out.println("  - " + spawn.id + ": " + spawn.monsterType + 
+                             " Lv" + spawn.level + " " + tier);
+        }
+    }
+    
     private void addFountain(float x, float y) {
-    	Entity fountain = EntityFactory.createFountain(x, y);
+        Entity fountain = EntityFactory.createFountain(x, y);
         entities.add(fountain);
         System.out.println("Added fountain at (" + (int)x + ", " + (int)y + ")");
-		
-	}
+    }
 
-	private void addBoulder(float x, float y) {
-    	Entity boulder = EntityFactory.createBoulder(x, y);
+    private void addBoulder(float x, float y) {
+        Entity boulder = EntityFactory.createBoulder(x, y);
         entities.add(boulder);
         System.out.println("Added boulder at (" + (int)x + ", " + (int)y + ")");
-		
-	}
-
-	private void addTree(float x, float y, String orientation) {
-    Entity tree = EntityFactory.createTree(x, y, orientation);
-    entities.add(tree);
-    System.out.println("Added tree at (" + (int)x + ", " + (int)y + ")");
     }
-	
+
+    private void addTree(float x, float y, String orientation) {
+        Entity tree = EntityFactory.createTree(x, y, orientation);
+        entities.add(tree);
+        System.out.println("Added tree at (" + (int)x + ", " + (int)y + ")");
+    }
+    
     public void addSpawnPoint(String monsterType, float x, float y, float respawnDelay, int level, MobTier tier) {
         SpawnPoint sp = new SpawnPoint(monsterType, x, y, respawnDelay, level, tier);
         spawnPoints.add(sp);
@@ -391,5 +438,10 @@ public class GameState {
     
     public UIManager getUIManager() {
         return uiManager;
+    }
+    
+    // ★ NEW: Getter for intro quest handler
+    public IntroQuestHandler getIntroQuestHandler() {
+        return introQuestHandler;
     }
 }

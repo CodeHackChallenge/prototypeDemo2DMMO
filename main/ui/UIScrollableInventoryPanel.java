@@ -326,9 +326,9 @@ public class UIScrollableInventoryPanel extends UIComponent {
                         stack.addToStack(1);
                         addedToSlotIndex = i;
                         refreshSlotDisplay();
-                        System.out.println("Stacked item: " + item.getName() + 
-                                         " (now " + stack.getStackCount() + "/" + 
-                                         item.getMaxStackSize() + ")");
+//                        System.out.println("Stacked item: " + item.getName() + 
+//                                         " (now " + stack.getStackCount() + "/" + 
+//                                         item.getMaxStackSize() + ")");
                         break;
                     }
                 }
@@ -342,7 +342,7 @@ public class UIScrollableInventoryPanel extends UIComponent {
                     sharedInventory[i] = new ItemStack(item, 1);
                     addedToSlotIndex = i;
                     refreshSlotDisplay();
-                    System.out.println("Added " + item.getName() + " to inventory slot " + i);
+                    //System.out.println("Added " + item.getName() + " to inventory slot " + i);
                     break;
                 }
             }
@@ -356,7 +356,7 @@ public class UIScrollableInventoryPanel extends UIComponent {
                 ItemStack stack = filteredStacks.get(i);
                 if (stack != null && sharedInventory[addedToSlotIndex] == stack) {
                     slots.get(i).markAsNew();
-                    System.out.println("✨ Marked slot " + i + " as NEW");
+                   // System.out.println("✨ Marked slot " + i + " as NEW");
                     break;
                 }
             }
@@ -368,44 +368,7 @@ public class UIScrollableInventoryPanel extends UIComponent {
         }
         
         return true;
-    }
-    /**
-     * ★ COMPLETELY FIXED: Add item with proper stacking
-     
-    public boolean addItemToCurrentTab(Item item) {
-        if (item == null) return false;
-        
-        // ★ If item is stackable, try to stack with existing items first
-        if (item.isStackable()) {
-            for (int i = 0; i < sharedInventory.length; i++) {
-                ItemStack stack = sharedInventory[i];
-                
-                if (stack != null && stack.canStackWith(item)) {
-                    if (stack.hasRoom(1)) {
-                        stack.addToStack(1);
-                        refreshSlotDisplay();  // Refresh to update display
-                        System.out.println("Stacked item: " + item.getName() + 
-                                         " (now " + stack.getStackCount() + "/" + 
-                                         item.getMaxStackSize() + ")");
-                        return true;
-                    }
-                }
-            }
-        }
-        
-        // ★ If can't stack (or not stackable), find empty slot
-        for (int i = 0; i < sharedInventory.length; i++) {
-            if (sharedInventory[i] == null) {
-                sharedInventory[i] = new ItemStack(item, 1);
-                refreshSlotDisplay();
-                System.out.println("Added " + item.getName() + " to inventory slot " + i);
-                return true;
-            }
-        }
-        
-        System.out.println("Inventory full!");
-        return false;
-    } */
+    } 
     /**
      * ★ COMPLETELY FIXED: Add multiple items with stacking
      */

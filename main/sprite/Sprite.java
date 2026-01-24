@@ -208,16 +208,25 @@ public class Sprite implements Component {
     
     private void setupAnimations() {
         // Use helper to add animations so row/frameCount are explicit and centralized
-        // Idle animations 
-        addAnimation(ANIM_IDLE_DOWN, 24, 2);
-        addAnimation(ANIM_IDLE_UP, 22, 2);
-        addAnimation(ANIM_IDLE_LEFT, 23, 2);
-        addAnimation(ANIM_IDLE_RIGHT, 25, 2);
-        addAnimation(ANIM_IDLE_DOWN_LEFT, 23, 2);
-        addAnimation(ANIM_IDLE_DOWN_RIGHT, 25, 2);
-        addAnimation(ANIM_IDLE_UP_LEFT, 23, 2);
-        addAnimation(ANIM_IDLE_UP_RIGHT, 25, 2);
-
+        
+    	addAnimation(ANIM_IDLE_DOWN, 0, 8);
+        addAnimation(ANIM_IDLE_UP, 2, 8);
+        addAnimation(ANIM_IDLE_LEFT, 1, 8);
+        addAnimation(ANIM_IDLE_RIGHT, 0, 8);
+        addAnimation(ANIM_IDLE_DOWN_LEFT, 1, 8);
+        addAnimation(ANIM_IDLE_DOWN_RIGHT, 0, 8);
+        addAnimation(ANIM_IDLE_UP_LEFT, 3, 8);
+        addAnimation(ANIM_IDLE_UP_RIGHT, 2, 8);
+        
+        // Walk animations
+        addAnimation(ANIM_WALK_DOWN, 4, 4);
+        addAnimation(ANIM_WALK_UP, 6, 4);
+        addAnimation(ANIM_WALK_LEFT, 4, 4);
+        addAnimation(ANIM_WALK_RIGHT, 5, 4);
+        addAnimation(ANIM_WALK_DOWN_LEFT, 4, 4);
+        addAnimation(ANIM_WALK_DOWN_RIGHT, 5, 4);
+        addAnimation(ANIM_WALK_UP_LEFT, 7, 4);
+        addAnimation(ANIM_WALK_UP_RIGHT, 6, 4);
         // Victory idle animations
         addAnimation(ANIM_VICTORY_IDLE_DOWN, 13, 3);
         addAnimation(ANIM_VICTORY_IDLE_UP, 13, 3);
@@ -227,17 +236,27 @@ public class Sprite implements Component {
         addAnimation(ANIM_VICTORY_IDLE_DOWN_RIGHT, 13, 3);
         addAnimation(ANIM_VICTORY_IDLE_UP_LEFT, 15, 3);
         addAnimation(ANIM_VICTORY_IDLE_UP_RIGHT, 16, 3);
-
-        // Walk animations
-        addAnimation(ANIM_WALK_DOWN, 10, 9);
-        addAnimation(ANIM_WALK_UP, 8, 9);
-        addAnimation(ANIM_WALK_LEFT, 9, 9);
-        addAnimation(ANIM_WALK_RIGHT, 11, 9);
-        addAnimation(ANIM_WALK_DOWN_LEFT, 9, 9);
-        addAnimation(ANIM_WALK_DOWN_RIGHT, 11, 9);
-        addAnimation(ANIM_WALK_UP_LEFT, 9, 9);
-        addAnimation(ANIM_WALK_UP_RIGHT, 11, 9);
-
+        
+        // Run animations
+        addAnimation(ANIM_RUN_DOWN, 4, 4);
+        addAnimation(ANIM_RUN_UP, 6, 4);
+        addAnimation(ANIM_RUN_LEFT, 4, 4);
+        addAnimation(ANIM_RUN_RIGHT, 5, 4);
+        addAnimation(ANIM_RUN_DOWN_LEFT, 4, 4);
+        addAnimation(ANIM_RUN_DOWN_RIGHT, 5, 4);
+        addAnimation(ANIM_RUN_UP_LEFT, 7, 4);
+        addAnimation(ANIM_RUN_UP_RIGHT, 6, 4);
+        
+        //attack
+        addAnimation(ANIM_ATTACK_DOWN, 8, 5);
+        addAnimation(ANIM_ATTACK_UP, 10, 5);
+        addAnimation(ANIM_ATTACK_LEFT, 9, 5);
+        addAnimation(ANIM_ATTACK_RIGHT, 8, 5);
+        addAnimation(ANIM_ATTACK_DOWN_LEFT, 9, 5);
+        addAnimation(ANIM_ATTACK_DOWN_RIGHT, 8, 5);
+        addAnimation(ANIM_ATTACK_UP_LEFT, 11, 5);
+        addAnimation(ANIM_ATTACK_UP_RIGHT, 10, 5);
+        /*
         // Run animations
         addAnimation(ANIM_RUN_DOWN, 40, 8);
         addAnimation(ANIM_RUN_UP, 38, 8);
@@ -247,6 +266,30 @@ public class Sprite implements Component {
         addAnimation(ANIM_RUN_DOWN_RIGHT, 41, 8);
         addAnimation(ANIM_RUN_UP_LEFT, 39, 8);
         addAnimation(ANIM_RUN_UP_RIGHT, 41, 8);
+        
+        // Idle animations 
+        /*addAnimation(ANIM_IDLE_DOWN, 24, 2);
+        addAnimation(ANIM_IDLE_UP, 22, 2);
+        addAnimation(ANIM_IDLE_LEFT, 23, 2);
+        addAnimation(ANIM_IDLE_RIGHT, 25, 2);
+        addAnimation(ANIM_IDLE_DOWN_LEFT, 23, 2);
+        addAnimation(ANIM_IDLE_DOWN_RIGHT, 25, 2);
+        addAnimation(ANIM_IDLE_UP_LEFT, 23, 2);
+        addAnimation(ANIM_IDLE_UP_RIGHT, 25, 2);
+         */
+        /*
+        // Walk animations
+        addAnimation(ANIM_WALK_DOWN, 10, 9);
+        addAnimation(ANIM_WALK_UP, 8, 9);
+        addAnimation(ANIM_WALK_LEFT, 9, 9);
+        addAnimation(ANIM_WALK_RIGHT, 11, 9);
+        addAnimation(ANIM_WALK_DOWN_LEFT, 9, 9);
+        addAnimation(ANIM_WALK_DOWN_RIGHT, 11, 9);
+        addAnimation(ANIM_WALK_UP_LEFT, 9, 9);
+        addAnimation(ANIM_WALK_UP_RIGHT, 11, 9);
+		 
+        
+        
 
         addAnimation(ANIM_ATTACK_DOWN, 14, 6);
         addAnimation(ANIM_ATTACK_UP, 12, 6);
@@ -256,8 +299,8 @@ public class Sprite implements Component {
         addAnimation(ANIM_ATTACK_DOWN_RIGHT, 15, 6);
         addAnimation(ANIM_ATTACK_UP_LEFT, 13, 6);
         addAnimation(ANIM_ATTACK_UP_RIGHT, 15, 6);
-
-        addAnimation(ANIM_DEAD, 20, 6);
+	*/
+        addAnimation(ANIM_DEAD, 12, 3);
     }
 
     // Helper to add animation entries with flexible row and frame count

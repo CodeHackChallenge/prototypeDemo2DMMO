@@ -28,6 +28,8 @@ public class Quest {
         DELIVERY        // Deliver item to NPC
     }
     
+    public static final int QUEST_MAIN = 0, QUEST_SIDE = 1;
+    
     private String id;
     private String name;
     private String description;
@@ -46,13 +48,15 @@ public class Quest {
     
     // Rewards
     private int expReward;
-    private int goldReward;
+    private int aurelReward;
     private List<String> itemRewards;  // Item IDs
     
     // Dialogue
     private String acceptDialogue;
     private String progressDialogue;
     private String completeDialogue;
+    
+    private int questType;
     
     public Quest(String id, String name, String description, QuestType type) {
         this.id = id;
@@ -68,14 +72,21 @@ public class Quest {
         this.currentObjectiveIndex = 0;
         
         this.expReward = 0;
-        this.goldReward = 0;
+        this.aurelReward = 0;
         this.itemRewards = new ArrayList<>();
         
         this.acceptDialogue = "Thank you for accepting this quest!";
         this.progressDialogue = "The quest is not yet complete.";
         this.completeDialogue = "Excellent work! Here is your reward.";
+    }//TODO: must declare if it's main quest or side
+    
+    public void questType(int type) {
+    	this.questType = type;
     }
     
+    public int getQuestType() {
+    	return questType;
+    }
     /**
      * Add an objective to the quest
      */
@@ -156,10 +167,10 @@ public class Quest {
             // TODO: Add XP to player
         }
         
-        // Award gold
-        if (goldReward > 0) {
-            System.out.println("Gained " + goldReward + " gold from quest!");
-            // TODO: Add gold to player
+        // Award aurel
+        if (aurelReward > 0) {
+            System.out.println("Gained " + aurelReward + " aurels from quest!");
+            // TODO: Add aurel to player
         }
         
         // Award items
@@ -232,8 +243,8 @@ public class Quest {
     public void setExpReward(int exp) { this.expReward = exp; }
     public int getExpReward() { return expReward; }
     
-    public void setGoldReward(int gold) { this.goldReward = gold; }
-    public int getGoldReward() { return goldReward; }
+    public void setAurelReward(int aurel) { this.aurelReward = aurel; }
+    public int getAurelReward() { return aurelReward; }
     
     public void addItemReward(String itemId) { itemRewards.add(itemId); }
     public List<String> getItemRewards() { return itemRewards; }

@@ -34,14 +34,18 @@ public class EntityFactory {
 	    player.addComponent(new Position(x, y));
 	    
 	    if(Engine.IDE == Engine.Eclipse)
-	    	player.addComponent(new Sprite("/sprites/hero2.png", 64, 64, 0.2f)); //eclipse
+	    	//player.addComponent(new Sprite("/sprites/hero2.png", 64, 64, 0.2f)); //eclipse
+			player.addComponent(new Sprite("/sprites/baphoment_137x147.png", 137, 147, 0.1f)); //eclipse
+	    
         else if(Engine.IDE == Engine.VSCode)
         	player.addComponent(new Sprite("resources/sprites/hero2.png", 64, 64, 0.2f));
          
+	    
+	    
 	    player.addComponent(new Movement(100f, 200f));
 	    
-	    // Base stats
-	    Stats stats = new Stats(1000, 100, 2, 0, 50);
+	    // Base stats 
+	    Stats stats = new Stats(100, 10, 2, 0, 50);
 	    player.addComponent(stats);
 	    
 	    // Experience and leveling
@@ -67,6 +71,10 @@ public class EntityFactory {
 	    // Combat system
 	    player.addComponent(new Combat(1.1f, 0.15f, 0.05f));
 	    
+	    //NAME
+	    player.addComponent(new NameTag("Boy Paldo", -60));
+	    NameTag displayName = player.getComponent(NameTag.class);
+	    displayName.show();
 	    // UI Components
 	    player.addComponent(new HealthBar(40, 4, 40));
 	    player.addComponent(new StaminaBar(40, 4, 46));
@@ -74,7 +82,8 @@ public class EntityFactory {
 	    player.addComponent(new XPBar(40, 3, 54));
 	    
 	    // Collision and movement
-	    player.addComponent(new CollisionBox(-10, -14, 22, 44));
+	    //player.addComponent(new CollisionBox(-23, -32, 47, 64));
+	    player.addComponent(new CollisionBox(-16, -24, 32, 48));
 	    player.addComponent(new Path());
 	    player.addComponent(new TargetIndicator());
 	    
@@ -302,6 +311,17 @@ public class EntityFactory {
     public static Entity createFionne(float x, float y) {
         Entity fionne = createNPC("fionne", "Fionne", x, y);
         
+        //fionne.addComponent(new Position(x, y));
+        //fionne.addComponent(new CollisionBox(32, 48, 16, 24));
+        // ★ NEW: Quest indicator component (initially hidden, updated by IntroQuestHandler)
+        fionne.addComponent(new QuestIndicator(-40));  // Positioned above name tag
+         
+        
+        // Add intro quests (if you want them managed separately)
+        // Quest introQuest = QuestFactory.createIntroQuest();
+        // npc.addQuest(introQuest);
+         
+        
         NPC npcComponent = fionne.getComponent(NPC.class);
         
         // Set custom dialogue
@@ -309,24 +329,39 @@ public class EntityFactory {
         //npcComponent.setFarewellDialogue("May fortune favor you on your journey!");
         
         // Create a starter quest
-        Quest goblinSlayerQuest = new Quest(
-            "goblin_slayer",
-            "Goblin Slayer",
-            "The goblins have to be dealt with! Help us by defeating 5 of them.",
-            Quest.QuestType.KILL
+        Quest runeCratingQuest = new Quest(
+            //"goblin_slayer",
+            //"Goblin Slayer",
+            "rune_crafting",
+            "Rune Crafting",
+            //"The goblins have to be dealt with! Help us by defeating 5 of them.",
+            "You need to collect all recipies to craft a rune",
+            Quest.QuestType.COLLECT
         );
-        
-        // Add objective: Kill 5 goblins
-        goblinSlayerQuest.addObjective(new QuestObjective(
-            "kill_goblins",
-            "Defeat 5 Goblins",
-            5
+        //quest type
+        runeCratingQuest.questType(Quest.QUEST_MAIN);
+        // Crafting
+        runeCratingQuest.addObjective(new QuestObjective( 
+            "rune_crafting", 
+            "Carved Wood",
+            1
         ));
-         
+        // Crafting
+        runeCratingQuest.addObjective(new QuestObjective( 
+            "rune_crafting", 
+            "Clay",
+            1
+        ));
+        // Crafting
+        runeCratingQuest.addObjective(new QuestObjective( 
+            "rune_crafting", 
+            "Carving Stone",
+            1
+        ));
         // Set rewards
-        goblinSlayerQuest.setExpReward(150);
-        goblinSlayerQuest.setGoldReward(50);
-        goblinSlayerQuest.addItemReward("Potion of Minor Healing");
+        runeCratingQuest.setExpReward(150);
+        runeCratingQuest.setAurelReward(50);
+        runeCratingQuest.addItemReward("Potion of Minor Healing");
         
         // Set quest dialogue
         //goblinSlayerQuest.setAcceptDialogue("Excellent! The goblins won't know what hit them. Return when you've slain 5 of them.");
@@ -334,7 +369,7 @@ public class EntityFactory {
         //goblinSlayerQuest.setCompleteDialogue("Amazing work! The village is safer thanks to you. Here's your reward.");
         
         // Add quest to NPC
-        npcComponent.addQuest(goblinSlayerQuest);
+        npcComponent.addQuest(runeCratingQuest);
         
         return fionne;
     }
