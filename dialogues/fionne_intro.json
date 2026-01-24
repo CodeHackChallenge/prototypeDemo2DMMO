@@ -8,30 +8,30 @@
         "id": "greet",
         "type": "DIALOGUE",
         "speaker": "Fionne",
-        "text": "Greetings, brave adventurer! I have a task that needs doing.",
+        "text": "To craft the rune, gather: Carved Wood, Clay, Carving Stone. These can be found by hunting the creatures roaming this island. But be cautious. Some creatures will attack without hesitation.",
         "choices": [
-          {"text": "What do you need?", "targetNode": "quest_offer"},
-          {"text": "Not interested.", "targetNode": "decline"}
+          {"text": "I understand", "targetNode": "quest_offer"},
+          {"text": "I am not ready, give me some time.", "targetNode": "decline"}
         ]
       },
       {
         "id": "quest_offer",
         "type": "QUEST_OFFER",
         "speaker": "Fionne",
-        "text": "The goblins have been causing trouble. Could you help us by defeating 5 of them?",
-        "questId": "goblin_slayer",
+        "text": "Gather these materials: Carved Wood, Clay, Carving Stone",
+        "questId": "rune_crafting",
         "choices": [
           {"text": "I'll do it!", "targetNode": "accept"},
-          {"text": "Maybe later.", "targetNode": "decline"}
+          {"text": "I need more time.", "targetNode": "decline"}
         ]
       },
       {
         "id": "accept",
         "type": "DIALOGUE",
         "speaker": "Fionne",
-        "text": "Excellent! The goblins won't know what hit them.",
+        "text": "When you have collected them all use Rune of Return to teleport back to me.",
         "actions": [
-          {"type": "debug_message", "message": "Quest accepted: Goblin Slayer"}
+          {"type": "debug_message", "message": "Quest accepted: Rune Crafting"}
         ],
         "nextNode": "end"
       },
@@ -39,7 +39,7 @@
         "id": "decline",
         "type": "DIALOGUE",
         "speaker": "Fionne",
-        "text": "I understand. Come back if you change your mind.",
+        "text": "I understand. Come back when your are ready.",
         "nextNode": "end"
       },
       {
