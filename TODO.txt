@@ -1,0 +1,10 @@
+Let’s implement a map specific drop and a map exclusive drop zoneDrop with a guranteedDrop in this zone for quest. That means the map exclusive drop is not in the monster’s base table. 
+Every zone gets assigned a loot tier. Loot Tier determines:
+• Drop rarity weights
+• Verdant Shard chance
+• Rune material availability
+• Crafting material quality
+
+Each zone applies multipliers to the monster’s base drop table from common to epic. Zones can add their own drops on top of monster drops: extraDrop. Zone loot weight formula
+
+FinalDropChance = BaseChance x ZoneMultiplier x LevelModifier
