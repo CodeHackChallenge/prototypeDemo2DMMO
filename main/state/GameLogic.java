@@ -53,9 +53,12 @@ public class GameLogic {
     private static final float STUCK_TIMEOUT = 0.5f; // Half second without movement = stuck
     private static final float MIN_MOVEMENT = 2f; // Minimum pixels to consider "moved"
     
+    private UIManager ui;
+    
     public GameLogic(GameState state) {
         this.state = state;
         this.dropSystem = new DropSystem();
+        this.ui = state.getUIManager();
     } 
 
     public void update(float delta) {
@@ -218,7 +221,12 @@ public class GameLogic {
         if (indicator != null) {
             indicator.clear();
         }
-        
+        //TODO: must check if player has equipped weapon to attack
+//        if(!ui.isWeaponEquipped()) {
+//        	System.out.println("You must equipped a weapon to attack");
+//        	return;
+//        }
+         
         state.setAutoAttackTarget(target);
         
         float distance = distance(playerPos.x, playerPos.y, targetPos.x, targetPos.y);
@@ -351,11 +359,11 @@ public class GameLogic {
     }
     
     private void reduceDurability() {
-        if(state.getUIManager().getGearSlot(UIGearSlot.SlotType.WEAPON) != null &&
-           state.getUIManager().getGearSlot(UIGearSlot.SlotType.WEAPON).getItem() != null &&
-           state.getUIManager().getGearSlot(UIGearSlot.SlotType.WEAPON).getItem().getCurrentDurability() > 0) {
+        if(ui.getGearSlot(UIGearSlot.SlotType.WEAPON) != null &&
+           ui.getGearSlot(UIGearSlot.SlotType.WEAPON).getItem() != null &&
+           ui.getGearSlot(UIGearSlot.SlotType.WEAPON).getItem().getCurrentDurability() > 0) {
             
-            state.getUIManager().getGearSlot(UIGearSlot.SlotType.WEAPON).getItem().reduceDurability(1);
+        	ui.getGearSlot(UIGearSlot.SlotType.WEAPON).getItem().reduceDurability(1);
             System.out.println("****NOTIFICATION: \n GameLogic.performAttack()>Reduced durability!");
         }
     }
@@ -1516,8 +1524,10 @@ public class GameLogic {
         }
         
         System.out.println("Gained " + xpAmount + " XP!");
+        //handle exp
+        //int levelsGained = exp.addExperience(xpAmount);
+        int levelsGained = exp.addExperience(finalXP);
         
-        int levelsGained = exp.addExperience(xpAmount);
         
         if (levelsGained > 0) {
             stats.applyLevelStats(exp, true);

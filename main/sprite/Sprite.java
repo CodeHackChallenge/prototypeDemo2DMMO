@@ -11,6 +11,13 @@ import dev.main.input.Component;
  * OPTIMIZED: Cached current animation to eliminate HashMap lookups every frame
  */
 public class Sprite implements Component {
+	//char animation
+	public static final int CHAR_SINGLE = -1;
+	public static final int CHAR_STANDARD = 0;
+    
+	public static final int CHAR_BAPHOMET = 1;
+    public static final int CHAR_BUNNY = 2;
+    
     // Idle animation constants
     public static final String ANIM_IDLE_DOWN = "idle_down";
     public static final String ANIM_IDLE_UP = "idle_up";
@@ -95,7 +102,7 @@ public class Sprite implements Component {
         }
     }
     
-    public Sprite(String spriteSheetPath, int frameWidth, int frameHeight, float frameDuration) {
+    public Sprite(String spriteSheetPath, int frameWidth, int frameHeight, float frameDuration, int spriteChar) {
         this.spriteSheet = TextureManager.load(spriteSheetPath);
         this.frameWidth = frameWidth;
         this.frameHeight = frameHeight;
@@ -108,7 +115,7 @@ public class Sprite implements Component {
         this.isStatic = frameDuration <= 0f;
 
         if (!this.isStatic) {
-            setupAnimations();
+            setupAnimations(spriteChar);
             // Start with idle animation
             this.currentAnimation = ANIM_IDLE_DOWN;
             this.cachedAnimation = animations.get(this.currentAnimation);  // ⭐ NEW: Cache initial
@@ -206,9 +213,120 @@ public class Sprite implements Component {
         return !loopAnimation && currentFrame >= cachedAnimation.frameCount - 1;  // ⭐ Use cache
     }
     
-    private void setupAnimations() {
+    
+    
+    
+    private void setupAnimations(int spriteChar) {
         // Use helper to add animations so row/frameCount are explicit and centralized
+        switch(spriteChar) {
+        	case CHAR_BAPHOMET:	setupBaphoment(); break;
+        	case CHAR_BUNNY:	setupBunny(); break;
+        	case CHAR_STANDARD: setupStandard(); break;
+        	
+        } 
+    	
+    }
+
+    private void setupStandard() {
+    	// Run animations
+        addAnimation(ANIM_RUN_DOWN, 40, 8);
+        addAnimation(ANIM_RUN_UP, 38, 8);
+        addAnimation(ANIM_RUN_LEFT, 39, 8);
+        addAnimation(ANIM_RUN_RIGHT, 41, 8);
+        addAnimation(ANIM_RUN_DOWN_LEFT, 39, 8);
+        addAnimation(ANIM_RUN_DOWN_RIGHT, 41, 8);
+        addAnimation(ANIM_RUN_UP_LEFT, 39, 8);
+        addAnimation(ANIM_RUN_UP_RIGHT, 41, 8);
         
+        // Idle animations 
+        addAnimation(ANIM_IDLE_DOWN, 24, 2);
+        addAnimation(ANIM_IDLE_UP, 22, 2);
+        addAnimation(ANIM_IDLE_LEFT, 23, 2);
+        addAnimation(ANIM_IDLE_RIGHT, 25, 2);
+        addAnimation(ANIM_IDLE_DOWN_LEFT, 23, 2);
+        addAnimation(ANIM_IDLE_DOWN_RIGHT, 25, 2);
+        addAnimation(ANIM_IDLE_UP_LEFT, 23, 2);
+        addAnimation(ANIM_IDLE_UP_RIGHT, 25, 2); 
+        
+        // Walk animations
+        addAnimation(ANIM_WALK_DOWN, 10, 9);
+        addAnimation(ANIM_WALK_UP, 8, 9);
+        addAnimation(ANIM_WALK_LEFT, 9, 9);
+        addAnimation(ANIM_WALK_RIGHT, 11, 9);
+        addAnimation(ANIM_WALK_DOWN_LEFT, 9, 9);
+        addAnimation(ANIM_WALK_DOWN_RIGHT, 11, 9);
+        addAnimation(ANIM_WALK_UP_LEFT, 9, 9);
+        addAnimation(ANIM_WALK_UP_RIGHT, 11, 9); 
+        //attack
+        addAnimation(ANIM_ATTACK_DOWN, 14, 6);
+        addAnimation(ANIM_ATTACK_UP, 12, 6);
+        addAnimation(ANIM_ATTACK_LEFT, 13, 6);
+        addAnimation(ANIM_ATTACK_RIGHT, 15, 6);
+        addAnimation(ANIM_ATTACK_DOWN_LEFT, 13, 6);
+        addAnimation(ANIM_ATTACK_DOWN_RIGHT, 15, 6);
+        addAnimation(ANIM_ATTACK_UP_LEFT, 13, 6);
+        addAnimation(ANIM_ATTACK_UP_RIGHT, 15, 6);
+		//die
+        addAnimation(ANIM_DEAD, 12, 3);
+	}
+
+
+	private void setupBunny() {
+    	//idle
+    	addAnimation(ANIM_IDLE_DOWN, 0, 4);
+        addAnimation(ANIM_IDLE_UP, 2, 4);
+        addAnimation(ANIM_IDLE_LEFT, 1, 4);
+        addAnimation(ANIM_IDLE_RIGHT, 0, 4);
+        addAnimation(ANIM_IDLE_DOWN_LEFT, 1, 4);
+        addAnimation(ANIM_IDLE_DOWN_RIGHT, 0, 4);
+        addAnimation(ANIM_IDLE_UP_LEFT, 3, 4);
+        addAnimation(ANIM_IDLE_UP_RIGHT, 2, 4);
+        
+        // Walk animations
+        addAnimation(ANIM_WALK_DOWN, 4, 4);
+        addAnimation(ANIM_WALK_UP, 6, 4);
+        addAnimation(ANIM_WALK_LEFT, 4, 4);
+        addAnimation(ANIM_WALK_RIGHT, 5, 4);
+        addAnimation(ANIM_WALK_DOWN_LEFT, 4, 4);
+        addAnimation(ANIM_WALK_DOWN_RIGHT, 5, 4);
+        addAnimation(ANIM_WALK_UP_LEFT, 7, 4);
+        addAnimation(ANIM_WALK_UP_RIGHT, 6, 4);
+        // Victory idle animations
+        addAnimation(ANIM_VICTORY_IDLE_DOWN, 4, 4);
+        addAnimation(ANIM_VICTORY_IDLE_UP, 6, 4);
+        addAnimation(ANIM_VICTORY_IDLE_LEFT, 4, 4);
+        addAnimation(ANIM_VICTORY_IDLE_RIGHT, 5, 4);
+        addAnimation(ANIM_VICTORY_IDLE_DOWN_LEFT, 4, 4);
+        addAnimation(ANIM_VICTORY_IDLE_DOWN_RIGHT, 5, 4);
+        addAnimation(ANIM_VICTORY_IDLE_UP_LEFT, 7, 4);
+        addAnimation(ANIM_VICTORY_IDLE_UP_RIGHT, 6, 4);
+        
+        // Run animations
+        addAnimation(ANIM_RUN_DOWN, 4, 4);
+        addAnimation(ANIM_RUN_UP, 6, 4);
+        addAnimation(ANIM_RUN_LEFT, 4, 4);
+        addAnimation(ANIM_RUN_RIGHT, 5, 4);
+        addAnimation(ANIM_RUN_DOWN_LEFT, 4, 4);
+        addAnimation(ANIM_RUN_DOWN_RIGHT, 5, 4);
+        addAnimation(ANIM_RUN_UP_LEFT, 7, 4);
+        addAnimation(ANIM_RUN_UP_RIGHT, 6, 4);
+        
+        //attack
+        addAnimation(ANIM_ATTACK_DOWN, 8, 4);
+        addAnimation(ANIM_ATTACK_UP, 10, 4);
+        addAnimation(ANIM_ATTACK_LEFT, 9, 4);
+        addAnimation(ANIM_ATTACK_RIGHT, 8, 4);
+        addAnimation(ANIM_ATTACK_DOWN_LEFT, 9, 4);
+        addAnimation(ANIM_ATTACK_DOWN_RIGHT, 8, 4);
+        addAnimation(ANIM_ATTACK_UP_LEFT, 11, 4);
+        addAnimation(ANIM_ATTACK_UP_RIGHT, 10, 4);
+        
+        //die
+        addAnimation(ANIM_DEAD, 12, 3);
+	}
+
+
+	private void setupBaphoment() {
     	addAnimation(ANIM_IDLE_DOWN, 0, 8);
         addAnimation(ANIM_IDLE_UP, 2, 8);
         addAnimation(ANIM_IDLE_LEFT, 1, 8);
@@ -256,54 +374,15 @@ public class Sprite implements Component {
         addAnimation(ANIM_ATTACK_DOWN_RIGHT, 8, 5);
         addAnimation(ANIM_ATTACK_UP_LEFT, 11, 5);
         addAnimation(ANIM_ATTACK_UP_RIGHT, 10, 5);
-        /*
-        // Run animations
-        addAnimation(ANIM_RUN_DOWN, 40, 8);
-        addAnimation(ANIM_RUN_UP, 38, 8);
-        addAnimation(ANIM_RUN_LEFT, 39, 8);
-        addAnimation(ANIM_RUN_RIGHT, 41, 8);
-        addAnimation(ANIM_RUN_DOWN_LEFT, 39, 8);
-        addAnimation(ANIM_RUN_DOWN_RIGHT, 41, 8);
-        addAnimation(ANIM_RUN_UP_LEFT, 39, 8);
-        addAnimation(ANIM_RUN_UP_RIGHT, 41, 8);
         
-        // Idle animations 
-        /*addAnimation(ANIM_IDLE_DOWN, 24, 2);
-        addAnimation(ANIM_IDLE_UP, 22, 2);
-        addAnimation(ANIM_IDLE_LEFT, 23, 2);
-        addAnimation(ANIM_IDLE_RIGHT, 25, 2);
-        addAnimation(ANIM_IDLE_DOWN_LEFT, 23, 2);
-        addAnimation(ANIM_IDLE_DOWN_RIGHT, 25, 2);
-        addAnimation(ANIM_IDLE_UP_LEFT, 23, 2);
-        addAnimation(ANIM_IDLE_UP_RIGHT, 25, 2);
-         */
-        /*
-        // Walk animations
-        addAnimation(ANIM_WALK_DOWN, 10, 9);
-        addAnimation(ANIM_WALK_UP, 8, 9);
-        addAnimation(ANIM_WALK_LEFT, 9, 9);
-        addAnimation(ANIM_WALK_RIGHT, 11, 9);
-        addAnimation(ANIM_WALK_DOWN_LEFT, 9, 9);
-        addAnimation(ANIM_WALK_DOWN_RIGHT, 11, 9);
-        addAnimation(ANIM_WALK_UP_LEFT, 9, 9);
-        addAnimation(ANIM_WALK_UP_RIGHT, 11, 9);
-		 
-        
-        
-
-        addAnimation(ANIM_ATTACK_DOWN, 14, 6);
-        addAnimation(ANIM_ATTACK_UP, 12, 6);
-        addAnimation(ANIM_ATTACK_LEFT, 13, 6);
-        addAnimation(ANIM_ATTACK_RIGHT, 15, 6);
-        addAnimation(ANIM_ATTACK_DOWN_LEFT, 13, 6);
-        addAnimation(ANIM_ATTACK_DOWN_RIGHT, 15, 6);
-        addAnimation(ANIM_ATTACK_UP_LEFT, 13, 6);
-        addAnimation(ANIM_ATTACK_UP_RIGHT, 15, 6);
-	*/
         addAnimation(ANIM_DEAD, 12, 3);
-    }
+      
+        
+		
+	}
 
-    // Helper to add animation entries with flexible row and frame count
+
+	// Helper to add animation entries with flexible row and frame count
     private void addAnimation(String name, int row, int frameCount) {
         animations.put(name, new Animation(row, frameCount));
     }

@@ -18,7 +18,7 @@ public class BuffFactory {
             Buff.BuffType.EVENT,
             Buff.DurationType.KILL_BASED,
             20000  // 20000 kills
-        ).setExpBoost(0.20f);  // +20% EXP
+        ).setExpBoost(0.60f);  // +20% EXP
     }
     
     /**

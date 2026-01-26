@@ -407,6 +407,11 @@ public class UIManager implements MouseWheelListener {
                 button.setLocked(true);  // Initially locked
                 button.setVisible(true);
                 button.setOnClick(() -> toggleStatsPanel());
+            } else if(buttonIds[i].equals("settings")) {
+            	button.setLocked(false);  // Initially locked
+                button.setVisible(true);
+                //TODO: createa settings panel ui
+               button.setOnClick(() -> toggleInventory());
             }
             else {
                 button.setLocked(true);
@@ -1284,6 +1289,7 @@ public class UIManager implements MouseWheelListener {
          
         Item oldItem = slot.equipItem(item);
         if (oldItem != null) {
+        	 
             addItemToInventory(oldItem);
             applyItemStats(oldItem, false);
         }
