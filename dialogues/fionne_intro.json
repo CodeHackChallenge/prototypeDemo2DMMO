@@ -19,7 +19,7 @@
         "type": "QUEST_OFFER",
         "speaker": "Fionne",
         "text": "Gather these materials: Carved Wood, Clay, Carving Stone",
-        "questId": "rune_crafting",
+        "questId": "collect_recipes",
         "choices": [
           {"text": "I'll do it!", "targetNode": "accept"},
           {"text": "I need more time.", "targetNode": "decline"}
@@ -31,7 +31,7 @@
         "speaker": "Fionne",
         "text": "When you have collected them all use Rune of Return to teleport back to me.",
         "actions": [
-          {"type": "debug_message", "message": "Quest accepted: Rune Crafting"}
+          {"type": "debug_message", "message": "Quest accepted: Collect Recipes"}
         ],
         "nextNode": "end"
       },

@@ -32,31 +32,72 @@
   ],
   "monsterSpawns": [
     {
-      "id": "goblin_spawn_01",
-      "monsterType": "Goblin",
-      "x": 64,
-      "y": 64,
+      "id": "bunny_spawn_01",
+      "monsterType": "Bunny",
+      "x": 512,
+      "y": 512,
       "level": 1,
       "tier": "TRASH",
       "respawnDelay": 10.0
     },
     {
-      "id": "goblin_spawn_02",
-      "monsterType": "Goblin",
-      "x": 120,
-      "y": 64,
+      "id": "bunny_spawn_02",
+      "monsterType": "Bunny",
+      "x": 512,
+      "y": 512,
       "level": 1,
       "tier": "TRASH",
       "respawnDelay": 10.0
     },
     {
-      "id": "elite_goblin",
-      "monsterType": "Goblin",
-      "x": 184,
-      "y": 640,
-      "level": 3,
-      "tier": "ELITE",
-      "respawnDelay": 15.0
+      "id": "bunny_spawn_03",
+      "monsterType": "Bunny",
+      "x": 512,
+      "y": 512,
+      "level": 1,
+      "tier": "TRASH",
+      "respawnDelay": 10.0
+    },
+    {
+      "id": "bunny_spawn_04",
+      "monsterType": "Bunny",
+      "x": 512,
+      "y": 512,
+      "level": 1,
+      "tier": "TRASH",
+      "respawnDelay": 10.0
     }
-  ]
+  ],
+  "zoneLoot": {
+    "lootTier": "BEGINNER",
+    "rarityMultipliers": {
+      "COMMON": 1.5,
+      "RARE": 0.8,
+      "EPIC": 0.5,
+      "LEGENDARY": 0.3,
+      "MYTHIC": 0.0
+    },
+    "extraDrops": [ 
+      {
+        "itemName": "Wooden Tablet",
+        "rarity": "RARE",
+        "minQuantity": 1,
+        "maxQuantity": 1,
+        "dropChance": 0.05,
+        "itemCreator": "ItemManager::createWoodenTablet",
+        "comment": "Zone-exclusive beginner item"
+      }
+    ],
+    "guaranteedDrops": [
+      {
+        "questId": "collect_recipes",
+        "itemName": "Carved Wood",
+        "rarity": "COMMON",
+        "quantity": 1,
+        "itemCreator": "ItemManager::createCarvedWood",
+        "dropOnFirstKill": true,
+        "comment": "Guaranteed first bunny kill for quest"
+      }
+    ]
+  }
 }
